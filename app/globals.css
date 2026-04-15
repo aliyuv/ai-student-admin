@@ -2,6 +2,126 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* 确保Ant Design样式正确加载 */
+.ant-layout {
+  min-height: 100vh;
+}
+
+/* 防止FOUC (Flash of Unstyled Content) */
+html {
+  visibility: hidden;
+  opacity: 0;
+}
+
+html.hydrated {
+  visibility: visible;
+  opacity: 1;
+  transition: opacity 0.3s ease-in-out;
+}
+
+/* ── EduStar 侧边栏样式 ─────────────────────────────────── */
+
+/* 侧边栏整体 */
+.edustar-sider {
+  background: #FFFFFF !important;
+}
+
+.edustar-sider .ant-layout-sider-children {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 菜单滚动区美化滚动条 */
+.edustar-menu-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.edustar-menu-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.edustar-menu-scroll::-webkit-scrollbar-thumb {
+  background: #E5E7EB;
+  border-radius: 4px;
+}
+.edustar-menu-scroll::-webkit-scrollbar-thumb:hover {
+  background: #D1D5DB;
+}
+
+/* 菜单分组标题 */
+.edustar-sider .ant-menu-item-group-title {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #9CA3AF !important;
+  padding-left: 24px !important;
+  margin-top: 8px;
+}
+
+/* 菜单项过渡动画 */
+.edustar-sider .ant-menu-item {
+  margin: 2px 8px !important;
+  border-radius: 8px !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  height: 40px !important;
+  line-height: 40px !important;
+}
+
+.edustar-sider .ant-menu-item:hover {
+  background: #F3F4F6 !important;
+}
+
+.edustar-sider .ant-menu-item-selected {
+  background: #EEF2FF !important;
+  color: #4F46E5 !important;
+  font-weight: 500;
+}
+
+.edustar-sider .ant-menu-item-selected::after {
+  display: none;
+}
+
+/* 选中项左侧指示条 */
+.edustar-sider .ant-menu-item-selected::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: #4F46E5;
+}
+
+/* 退出按钮 hover */
+.edustar-logout-btn:hover {
+  color: #EF4444 !important;
+  background: #FEF2F2;
+}
+
+/* 用户卡片 hover */
+.edustar-user-card:hover {
+  background: #F3F4F6 !important;
+}
+
+/* 折叠按钮 hover */
+.edustar-collapse-btn:hover {
+  background: #F3F4F6;
+  color: #4F46E5 !important;
+}
+
+/* 折叠态菜单居中 */
+.edustar-sider.ant-layout-sider-collapsed .ant-menu-item {
+  padding: 0 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 折叠态分组标题隐藏 */
+.edustar-sider.ant-layout-sider-collapsed .ant-menu-item-group-title {
+  display: none;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {

@@ -1,36 +1,244 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 基于AI的学生综合评测管理系统
 
-## Getting Started
+一个现代化的学生综合素质评价管理系统，采用人工智能技术进行智能评测，适合高校学生综合素质评价场景。
 
-First, run the development server:
+## 🎯 项目特点
 
+- **🤖 AI智能评测** - 基于多维度数据的智能综合评测
+- **👥 多角色权限** - 管理员、教师、学生三种角色
+- **📊 数据可视化** - 丰富的图表和统计分析
+- **🔄 完整业务流程** - 从数据采集到评测反馈的完整闭环
+- **💻 现代化界面** - 基于Ant Design的专业UI设计
+
+## 🛠️ 技术栈
+
+- **前端框架**: Next.js 16 + React 19 + TypeScript
+- **UI组件库**: Ant Design 6.3 + Tailwind CSS
+- **数据库**: SQLite + Prisma ORM
+- **认证**: NextAuth.js
+- **图表**: Recharts
+- **开发语言**: TypeScript
+
+## 📦 功能模块
+
+### 🔐 权限管理
+- 基于RBAC的角色权限控制
+- 三种角色：管理员、教师、学生
+- 页面级和功能级权限控制
+
+### 👨‍💼 管理员功能
+- 用户账号管理（增删改查）
+- 院系专业管理
+- 班级信息管理
+- AI评测配置（权重设置、评分规则）
+- 全校数据统计分析
+- 申诉处理管理
+
+### 👩‍🏫 教师功能
+- 学生成绩录入管理
+- 社团活动实践录入
+- 考勤信息管理
+- 学生评测结果审核
+- 班级数据统计
+
+### 👨‍🎓 学生功能
+- 个人评测结果查看
+- 多维度评测报告
+- 评测结果申诉
+- 个人数据管理
+
+### 🤖 AI评测引擎
+- **多维度评分**
+  - 学业成绩（60%）
+  - 社团活动（15%）
+  - 品行表现（10%）
+  - 出勤情况（15%）
+
+- **智能算法**
+  - 基础加权评分
+  - 逻辑回归优化
+  - 时间衰减处理
+  - 异常检测
+
+- **智能报告生成**
+  - 个性化评语
+  - 维度分析
+  - 改进建议
+  - 历史对比
+
+### 📊 数据统计
+- 实时数据大屏
+- 多维度图表展示
+- 班级排名分析
+- 趋势变化追踪
+
+## 🚀 快速开始
+
+### 环境要求
+- Node.js >= 18
+- npm 或 yarn
+
+### 安装依赖
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cd student-eval-system
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 数据库设置
+```bash
+# 生成Prisma客户端
+npx prisma generate
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+# 推送数据库schema
+npx prisma db push
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+# 生成种子数据
+npm run seed
+```
 
-## Learn More
+### 启动开发服务器
+```bash
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+访问 [http://localhost:3000](http://localhost:3000) 查看应用。
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🔑 测试账号
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| 角色 | 邮箱 | 密码 | 说明 |
+|------|------|------|------|
+| 管理员 | admin@school.com | admin123 | 系统管理员 |
+| 教师 | teacher1@school.com | teacher123 | 班主任老师 |
+| 学生 | student1@school.com | student123 | 学生账号 |
 
-## Deploy on Vercel
+## 📁 项目结构
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+student-eval-system/
+├── app/                          # Next.js App Router
+│   ├── (dashboard)/             # Dashboard布局组
+│   │   ├── admin/              # 管理员页面
+│   │   ├── teacher/            # 教师页面
+│   │   └── student/            # 学生页面
+│   ├── api/                    # API路由
+│   └── login/                  # 登录页面
+├── components/                  # 共享组件
+│   ├── ui/                     # 基础UI组件
+│   └── shared/                 # 业务组件
+├── lib/                        # 核心库
+│   ├── evaluation/             # AI评测引擎
+│   │   ├── index.ts           # 主评测入口
+│   │   ├── score-calculator.ts # 评分计算器
+│   │   ├── logistic-model.ts  # 逻辑回归模型
+│   │   └── report-generator.ts # 报告生成器
+│   ├── auth.ts                 # 认证配置
+│   ├── prisma.ts              # 数据库客户端
+│   └── utils.ts               # 工具函数
+├── prisma/                     # 数据库相关
+│   ├── schema.prisma          # 数据库模式
+│   └── seed.ts                # 种子数据
+├── types/                      # TypeScript类型定义
+└── constants/                  # 常量配置
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🔧 核心配置
+
+### 数据库配置
+项目使用SQLite作为开发数据库，配置文件在 `prisma/schema.prisma`。
+
+### AI评测配置
+AI评测引擎的核心逻辑位于 `lib/evaluation/` 目录：
+
+- **score-calculator.ts**: 各维度评分计算
+- **logistic-model.ts**: 逻辑回归优化模型
+- **report-generator.ts**: 智能评语和报告生成
+
+### 权重配置
+默认评测权重可以在管理员面板中动态调整：
+- 学业成绩: 60%
+- 社团活动: 15%
+- 品行表现: 10%
+- 出勤情况: 15%
+
+## 🎨 界面展示
+
+- **现代化设计**: 基于Ant Design的专业界面
+- **响应式布局**: 支持桌面端和移动端
+- **数据可视化**: 丰富的图表和统计展示
+- **用户体验**: 友好的交互和反馈
+
+## 📚 使用说明
+
+### 管理员操作流程
+1. 登录管理员账号
+2. 配置院系、专业、班级信息
+3. 管理用户账号和权限
+4. 配置AI评测参数
+5. 查看全校统计数据
+6. 处理学生申诉
+
+### 教师操作流程
+1. 登录教师账号
+2. 录入学生成绩
+3. 管理学生活动和实践
+4. 记录考勤信息
+5. 审核评测结果
+6. 查看班级统计
+
+### 学生操作流程
+1. 登录学生账号
+2. 查看个人评测报告
+3. 了解各维度表现
+4. 查看改进建议
+5. 提交评测申诉（如需要）
+
+## 🤖 AI评测说明
+
+### 评测维度
+- **学业成绩**: 根据各科课程成绩计算，支持加权平均
+- **社团活动**: 根据参与活动类型、时长、获奖情况评分
+- **品行表现**: 根据奖惩记录和道德表现评分
+- **出勤情况**: 根据出勤率和异常情况评分
+
+### 智能特性
+- **个性化评语**: 基于学生表现生成个性化评语
+- **维度分析**: 自动识别强项和短板
+- **改进建议**: 针对性的改进建议
+- **趋势分析**: 历史数据对比和趋势预测
+
+## 🔄 开发指南
+
+### 添加新功能
+1. 在对应角色目录下创建页面组件
+2. 更新路由和权限配置
+3. 添加相关API接口
+4. 更新数据库模式（如需要）
+
+### 自定义评测算法
+修改 `lib/evaluation/` 目录下的相关文件：
+- 评分规则: `score-calculator.ts`
+- AI模型: `logistic-model.ts`
+- 报告生成: `report-generator.ts`
+
+## 🌟 项目亮点
+
+1. **完整的业务闭环**: 从数据采集到结果反馈的完整流程
+2. **智能评测引擎**: 多算法融合的AI评测系统
+3. **现代化技术栈**: 使用最新的Web开发技术
+4. **良好的代码结构**: 清晰的模块划分和类型定义
+5. **丰富的数据展示**: 多种图表和可视化方式
+6. **用户体验优化**: 友好的界面和交互设计
+
+## 📄 许可证
+
+本项目仅用于学习和展示目的。
+
+## 👥 联系方式
+
+如有问题或建议，请联系项目维护者。
+
+---
+
+**适用场景**: 高校学生综合素质评价、毕业设计项目、教学管理系统
+
+**推荐用途**: 课程设计、毕业设计、学习参考、技术展示

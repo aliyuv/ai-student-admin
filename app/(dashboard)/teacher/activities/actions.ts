@@ -1,0 +1,17 @@
+"use server"
+
+import { prisma } from "@/lib/prisma"
+import { revalidatePath } from "next/cache"
+
+export async function addActivity(formData: FormData) {
+  await prisma.activity.create({
+    data: {
+      studentId: formData.get("studentId") as string,
+      type: formData.get("type") as "ACTIVITY" | "PRACTICE",
+      title: formData.get("title") as string,
+      score: parseFloat(formData.get("score") as string),
+      date: new Date(formData.get("date") as string),
+    },
+  })
+  revalidatePath("/teacher/activities")
+}

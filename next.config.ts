@@ -1,7 +1,35 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // 确保样式正确加载
+  experimental: {
+    optimizePackageImports: ['antd']
+  },
+
+  // 编译器选项
+  compiler: {
+    // 移除console.log（生产环境）
+    removeConsole: process.env.NODE_ENV === "production",
+  },
+
+  // 静态资源缓存
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          }
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;
