@@ -41,13 +41,11 @@ export default async function TeacherStudentsPage() {
   })
 
   const classNames = Array.from(new Set(studentsData.map(s => s.className)))
-  const grades = Array.from(new Set(studentsData.map(s => s.grade)))
 
   return (
     <StudentListClient
       students={studentsData}
       classNames={classNames}
-      grades={grades}
     />
   )
 }

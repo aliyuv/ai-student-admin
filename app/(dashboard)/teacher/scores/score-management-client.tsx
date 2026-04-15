@@ -259,7 +259,6 @@ export default function ScoreManagementClient({
   // 新增成绩
   const handleAdd = () => {
     setEditingScore(null)
-    form.resetFields()
     setIsModalVisible(true)
   }
 
@@ -305,7 +304,6 @@ export default function ScoreManagementClient({
       }
 
       setIsModalVisible(false)
-      form.resetFields()
     } catch {
       message.error('保存失败')
     } finally {
@@ -702,7 +700,6 @@ export default function ScoreManagementClient({
         onCancel={() => setIsModalVisible(false)}
         footer={null}
         destroyOnHidden
-        forceRender
         afterOpenChange={(open) => {
           if (open) {
             if (editingScore) {

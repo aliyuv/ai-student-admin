@@ -238,7 +238,6 @@ export default function AttendanceManagementClient({ students, attendances }: Pr
         onCancel={() => setIsModalVisible(false)}
         footer={null}
         destroyOnHidden
-        forceRender
         width={480}
       >
         <Form form={form} layout="vertical" onFinish={handleSubmit}>

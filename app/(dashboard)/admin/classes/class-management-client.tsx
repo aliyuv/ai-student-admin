@@ -435,7 +435,6 @@ export default function ClassManagementClient({
         footer={null}
         width={600}
         destroyOnHidden
-        forceRender
         afterOpenChange={(open) => {
           if (open && editingClass) {
             form.setFieldsValue({

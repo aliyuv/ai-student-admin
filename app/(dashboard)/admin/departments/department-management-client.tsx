@@ -520,7 +520,6 @@ export default function DepartmentManagementClient({
         onCancel={() => setIsDeptModalVisible(false)}
         footer={null}
         destroyOnHidden
-        forceRender
         afterOpenChange={(open) => {
           if (open && editingDepartment) {
             deptForm.setFieldsValue({
@@ -573,7 +572,6 @@ export default function DepartmentManagementClient({
         onCancel={() => setIsMajorModalVisible(false)}
         footer={null}
         destroyOnHidden
-        forceRender
         afterOpenChange={(open) => {
           if (open && editingMajor) {
             majorForm.setFieldsValue({ name: editingMajor.name, code: editingMajor.code })

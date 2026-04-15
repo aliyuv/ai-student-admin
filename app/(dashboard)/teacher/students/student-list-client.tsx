@@ -30,10 +30,9 @@ interface StudentData {
 interface Props {
   students: StudentData[]
   classNames: string[]
-  grades: string[]
 }
 
-export default function StudentListClient({ students, classNames, grades }: Props) {
+export default function StudentListClient({ students, classNames }: Props) {
   const [filtered, setFiltered] = useState(students)
   const [search, setSearch] = useState('')
   const [classFilter, setClassFilter] = useState<string>()
@@ -149,8 +148,9 @@ export default function StudentListClient({ students, classNames, grades }: Prop
 
   // 统计
   const total = filtered.length
-  const avgAll = total > 0
-    ? Math.round((filtered.reduce((s, st) => s + st.avgScore, 0) / filtered.filter(s => s.avgScore > 0).length || 0) * 10) / 10
+  const scoredStudents = filtered.filter(s => s.avgScore > 0)
+  const avgAll = scoredStudents.length > 0
+    ? Math.round((scoredStudents.reduce((s, st) => s + st.avgScore, 0) / scoredStudents.length) * 10) / 10
     : 0
   const avgAtt = total > 0
     ? Math.round(filtered.reduce((s, st) => s + st.attendanceRate, 0) / total)

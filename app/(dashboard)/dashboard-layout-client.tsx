@@ -144,21 +144,27 @@ export default function DashboardLayoutClient({ children, user }: DashboardLayou
           <div
             className="edustar-logo-area"
             style={{
-              padding: collapsed ? '20px 12px 16px' : '20px 20px 16px',
+              padding: '20px 0 16px',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: collapsed ? 'center' : 'flex-start',
+              justifyContent: 'center',
               borderBottom: '1px solid #F3F4F6',
+              transition: 'padding 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
             }}
           >
-            {collapsed ? (
-              <Tooltip title="智评 EduStar" placement="right">
-                <div><Logo size={36} showText={false} /></div>
-              </Tooltip>
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <Logo size={38} showText={false} />
-                <div style={{ lineHeight: 1.3 }}>
+            <Tooltip title={collapsed ? "智评 EduStar" : ''} placement="right">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, overflow: 'hidden' }}>
+                <Logo size={collapsed ? 36 : 38} showText={false} />
+                <div
+                  style={{
+                    lineHeight: 1.3,
+                    maxWidth: collapsed ? 0 : 160,
+                    opacity: collapsed ? 0 : 1,
+                    overflow: 'hidden',
+                    whiteSpace: 'nowrap',
+                    transition: 'max-width 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                  }}
+                >
                   <div style={{ fontSize: 17, fontWeight: 700, color: '#1F2937', letterSpacing: '-0.01em' }}>
                     智评 EduStar
                   </div>
@@ -167,26 +173,34 @@ export default function DashboardLayoutClient({ children, user }: DashboardLayou
                   </div>
                 </div>
               </div>
-            )}
+            </Tooltip>
           </div>
 
           {/* 角色标签 */}
-          {!collapsed && (
-            <div style={{ padding: '12px 20px 4px' }}>
-              <Tag
-                color={roleInfo.tag}
-                style={{
-                  borderRadius: 6,
-                  fontSize: 12,
-                  padding: '2px 10px',
-                  border: 'none',
-                }}
-              >
-                <DashboardOutlined style={{ marginRight: 4 }} />
-                {roleInfo.label}工作台
-              </Tag>
-            </div>
-          )}
+          <div
+            style={{
+              padding: '0 20px',
+              maxHeight: collapsed ? 0 : 40,
+              paddingTop: collapsed ? 0 : 12,
+              paddingBottom: collapsed ? 0 : 4,
+              opacity: collapsed ? 0 : 1,
+              overflow: 'hidden',
+              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+            }}
+          >
+            <Tag
+              color={roleInfo.tag}
+              style={{
+                borderRadius: 6,
+                fontSize: 12,
+                padding: '2px 10px',
+                border: 'none',
+              }}
+            >
+              <DashboardOutlined style={{ marginRight: 4 }} />
+              {roleInfo.label}工作台
+            </Tag>
+          </div>
 
           {/* 菜单区 */}
           <div
@@ -214,112 +228,93 @@ export default function DashboardLayoutClient({ children, user }: DashboardLayou
             style={{
               borderTop: '1px solid #F3F4F6',
               padding: collapsed ? '12px 8px' : '16px',
+              transition: 'padding 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
             }}
           >
-            {collapsed ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-                <Tooltip title={userName} placement="right">
+            <div
+              className={collapsed ? '' : 'edustar-user-card'}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: collapsed ? 'center' : 'space-between',
+                padding: collapsed ? 0 : '10px 12px',
+                borderRadius: 10,
+                background: collapsed ? 'transparent' : '#F9FAFB',
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                flexDirection: collapsed ? 'column' : 'row',
+                gap: collapsed ? 8 : 0,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                <Tooltip title={collapsed ? userName : ''} placement="right">
                   <Avatar
                     size={36}
                     style={{
                       background: 'linear-gradient(135deg, #6366F1, #4F46E5)',
                       fontSize: 15,
                       fontWeight: 600,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {initials}
-                  </Avatar>
-                </Tooltip>
-                <Tooltip title="退出登录" placement="right">
-                  <div
-                    onClick={handleLogout}
-                    style={{
-                      cursor: 'pointer',
-                      color: '#9CA3AF',
-                      fontSize: 16,
-                      padding: 4,
-                      borderRadius: 6,
-                      transition: 'all 0.2s',
-                    }}
-                    className="edustar-logout-btn"
-                  >
-                    <LogoutOutlined />
-                  </div>
-                </Tooltip>
-              </div>
-            ) : (
-              <div
-                className="edustar-user-card"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '10px 12px',
-                  borderRadius: 10,
-                  background: '#F9FAFB',
-                  transition: 'all 0.2s',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                  <Avatar
-                    size={36}
-                    style={{
-                      background: 'linear-gradient(135deg, #6366F1, #4F46E5)',
-                      fontSize: 15,
-                      fontWeight: 600,
+                      cursor: collapsed ? 'pointer' : 'default',
                       flexShrink: 0,
                     }}
                   >
                     {initials}
                   </Avatar>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{
-                      fontSize: 13,
-                      fontWeight: 600,
-                      color: '#1F2937',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}>
-                      {userName}
-                    </div>
-                    <div style={{
-                      fontSize: 11,
-                      color: '#9CA3AF',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}>
-                      {user.email || ''}
-                    </div>
+                </Tooltip>
+                <div
+                  style={{
+                    minWidth: 0,
+                    maxWidth: collapsed ? 0 : 160,
+                    opacity: collapsed ? 0 : 1,
+                    overflow: 'hidden',
+                    whiteSpace: 'nowrap',
+                    transition: 'max-width 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                  }}
+                >
+                  <div style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: '#1F2937',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {userName}
+                  </div>
+                  <div style={{
+                    fontSize: 11,
+                    color: '#9CA3AF',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {user.email || ''}
                   </div>
                 </div>
-                <Tooltip title="退出登录">
-                  <div
-                    onClick={handleLogout}
-                    className="edustar-logout-btn"
-                    style={{
-                      cursor: 'pointer',
-                      color: '#9CA3AF',
-                      fontSize: 16,
-                      padding: '6px',
-                      borderRadius: 6,
-                      transition: 'all 0.2s',
-                      flexShrink: 0,
-                    }}
-                  >
-                    <LogoutOutlined />
-                  </div>
-                </Tooltip>
               </div>
-            )}
+              <Tooltip title="退出登录" placement={collapsed ? 'right' : 'top'}>
+                <div
+                  onClick={handleLogout}
+                  className="edustar-logout-btn"
+                  style={{
+                    cursor: 'pointer',
+                    color: '#9CA3AF',
+                    fontSize: 16,
+                    padding: collapsed ? 4 : '6px',
+                    borderRadius: 6,
+                    transition: 'all 0.2s',
+                    flexShrink: 0,
+                  }}
+                >
+                  <LogoutOutlined />
+                </div>
+              </Tooltip>
+            </div>
           </div>
         </div>
       </Sider>
 
       {/* ── 主区域 ─────────────────────────────────────────── */}
-      <Layout style={{ marginLeft: collapsed ? 72 : 260, transition: 'margin-left 0.2s' }}>
+      <Layout style={{ marginLeft: collapsed ? 72 : 260, transition: 'margin-left 0.2s cubic-bezier(0.4, 0, 0.2, 1)' }}>
         {/* Header */}
         <Header
           style={{
