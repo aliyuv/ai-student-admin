@@ -57,6 +57,24 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
   const [selectedRole, setSelectedRole] = useState<Role | undefined>()
   const [form] = Form.useForm()
 
+  // 编辑时回填表单
+  useEffect(() => {
+    if (isModalVisible && editingUser) {
+      // 延迟一帧，确保 Modal 已挂载、Form 已连接
+      const timer = setTimeout(() => {
+        form.setFieldsValue({
+          name: editingUser.name,
+          email: editingUser.email,
+          role: editingUser.role,
+        })
+      }, 0)
+      return () => clearTimeout(timer)
+    }
+    if (isModalVisible && !editingUser) {
+      form.resetFields()
+    }
+  }, [isModalVisible, editingUser, form])
+
   // 获取班级列表
   useEffect(() => {
     fetchClasses()
@@ -402,16 +420,6 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
         onCancel={() => setIsModalVisible(false)}
         footer={null}
         destroyOnHidden
-        forceRender
-        afterOpenChange={(open) => {
-          if (open && editingUser) {
-            form.setFieldsValue({
-              name: editingUser.name,
-              email: editingUser.email,
-              role: editingUser.role,
-            })
-          }
-        }}
         width={600}
       >
         <Form

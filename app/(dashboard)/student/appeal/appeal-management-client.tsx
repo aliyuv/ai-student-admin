@@ -143,7 +143,7 @@ export default function AppealManagementClient({
 
       {appealableEvaluations.length === 0 && appeals.length === 0 && (
         <Alert
-          message="暂无可申诉的评测记录"
+          title="暂无可申诉的评测记录"
           description="当您有已审核的评测结果时，如有异议可在此提交申诉"
           type="info"
           style={{ marginBottom: 24 }}
@@ -263,7 +263,7 @@ export default function AppealManagementClient({
         width={600}
       >
         <Alert
-          message="申诉注意事项"
+          title="申诉注意事项"
           description={
             <ul style={{ margin: 0, paddingLeft: 20 }}>
               <li>请确保申诉理由充分、客观</li>
@@ -395,7 +395,7 @@ export default function AppealManagementClient({
               <>
                 <Divider>处理结果</Divider>
                 <Alert
-                  message="申诉处理完成"
+                  title="申诉处理完成"
                   description={viewingAppeal.reply}
                   type="success"
                   showIcon

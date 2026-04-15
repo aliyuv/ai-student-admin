@@ -6,27 +6,27 @@ export default async function StatsPage() {
   const [students, scores, activities, awards, attendances, evaluations, classes] =
     await Promise.all([
       prisma.student.findMany({
-        include: { user: true, class: true },
+        include: { user: true, class: true } as const,
       }),
       prisma.score.findMany({
-        include: { student: { include: { class: true } } },
+        include: { student: { include: { class: true } } } as const,
       }),
       prisma.activity.findMany({
-        include: { student: { include: { user: true, class: true } } },
+        include: { student: { include: { user: true, class: true } } } as const,
       }),
       prisma.award.findMany({
-        include: { student: { include: { user: true, class: true } } },
+        include: { student: { include: { user: true, class: true } } } as const,
       }),
       prisma.attendance.findMany({
-        include: { student: { include: { class: true } } },
+        include: { student: { include: { class: true } } } as const,
       }),
       prisma.evaluation.findMany({
-        include: { student: { include: { user: true, class: true } } },
+        include: { student: { include: { user: true, class: true } } } as const,
       }),
       prisma.class.findMany({
-        include: { teacher: true, _count: { select: { students: true } } },
+        include: { teacher: true, _count: { select: { students: true } } } as const,
       }),
-    ])
+    ] as const)
 
   // ── 服务端预处理：只传前端需要的摘要数据 ──────────────────────────────────
 
