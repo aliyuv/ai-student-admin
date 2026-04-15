@@ -9,7 +9,6 @@ import type {
   AIProvider,
   ChatCompletionOptions,
   ChatCompletionResult,
-  ChatMessage,
 } from "./types"
 
 interface ClaudeConfig {

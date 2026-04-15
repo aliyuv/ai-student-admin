@@ -22,6 +22,8 @@ export async function proxy(req: NextRequest) {
   if (sessionCookie && pathname === "/login") {
     return NextResponse.redirect(new URL("/", req.url))
   }
+
+  return NextResponse.next()
 }
 
 export const config = {

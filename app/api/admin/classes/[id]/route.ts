@@ -50,7 +50,7 @@ export async function PUT(
 
 // 删除班级
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {

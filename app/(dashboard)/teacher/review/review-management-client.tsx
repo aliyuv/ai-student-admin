@@ -224,7 +224,6 @@ export default function ReviewManagementClient({ students, evaluations, semester
   const total = filtered.length
   const pendingCount = filtered.filter(e => e.status === 'PENDING').length
   const approvedCount = filtered.filter(e => e.status === 'APPROVED').length
-  const rejectedCount = filtered.filter(e => e.status === 'REJECTED').length
   const avgScore = total > 0
     ? Math.round((filtered.reduce((s, e) => s + e.aiScore, 0) / total) * 10) / 10
     : 0

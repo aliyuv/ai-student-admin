@@ -19,7 +19,6 @@ import {
   Divider,
   Descriptions,
   Modal,
-  Tooltip,
 } from 'antd'
 import {
   TrophyOutlined,

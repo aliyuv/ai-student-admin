@@ -1,12 +1,11 @@
 "use client"
 
-import { useState, useMemo } from 'react'
+import { useMemo } from 'react'
 import {
   Card,
   Row,
   Col,
   Statistic,
-  Select,
   Typography,
   Space,
   Progress,
@@ -25,7 +24,6 @@ import {
 } from '@ant-design/icons'
 
 const { Title, Text } = Typography
-const { Option } = Select
 
 // 简化的统计 Dashboard 组件（不使用复杂图表库）
 interface StatsData {
@@ -39,7 +37,6 @@ interface StatsData {
 }
 
 export default function StatsDashboardSimple(data: StatsData) {
-  const [selectedGrade, setSelectedGrade] = useState<string>()
 
   // 基础统计
   const stats = useMemo(() => {

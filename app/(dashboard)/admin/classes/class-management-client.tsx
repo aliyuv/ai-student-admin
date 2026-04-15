@@ -23,7 +23,6 @@ import {
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
-  SearchOutlined,
   ReloadOutlined,
   TeamOutlined,
   UserOutlined,

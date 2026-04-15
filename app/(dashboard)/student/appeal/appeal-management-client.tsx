@@ -67,7 +67,6 @@ interface AppealManagementClientProps {
 }
 
 export default function AppealManagementClient({
-  student,
   evaluations,
   appeals
 }: AppealManagementClientProps) {
@@ -93,7 +92,7 @@ export default function AppealManagementClient({
   }
 
   // 提交申诉
-  const handleSubmitAppeal = async (values: any) => {
+  const handleSubmitAppeal = async (_values: any) => {
     try {
       setLoading(true)
       // TODO: 实际提交申诉API

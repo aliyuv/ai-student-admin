@@ -207,7 +207,7 @@ async function handleTrain() {
       // 有足够标签数据：用梯度下降拟合权重
       const labeled = students
         .filter((s) => studentScoreMap.has(s.id))
-        .map((s, i) => {
+        .map((s) => {
           const idx = students.indexOf(s)
           return {
             dims: dataPoints[idx],

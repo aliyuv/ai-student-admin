@@ -4,7 +4,7 @@ import { useState } from 'react'
 import {
   Card, Table, Button, Space, Input, Select, Modal, Form,
   message, Popconfirm, Typography, Row, Col, Tag, InputNumber,
-  Tabs, Badge, Descriptions, Statistic, Tooltip
+  Tabs, Descriptions, Statistic, Tooltip
 } from 'antd'
 import {
   PlusOutlined, EditOutlined, DeleteOutlined,
@@ -179,13 +179,13 @@ export default function ActivityManagementClient({ students, activities }: Activ
   const handleEdit = (activity: Activity) => { setEditingActivity(activity); setIsModalVisible(true) }
   const handleViewDetail = (activity: Activity) => { setViewingActivity(activity); setIsDetailVisible(true) }
 
-  const handleDelete = async (activityId: string) => {
+  const handleDelete = async (_activityId: string) => {
     try { setLoading(true); message.success('活动记录删除成功') }
     catch { message.error('删除失败') }
     finally { setLoading(false) }
   }
 
-  const handleSave = async (values: any) => {
+  const handleSave = async (_values: any) => {
     try {
       setLoading(true)
       message.success(editingActivity ? '活动更新成功' : '活动录入成功')

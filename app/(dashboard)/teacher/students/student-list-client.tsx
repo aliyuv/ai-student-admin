@@ -6,7 +6,7 @@ import {
   Statistic, Avatar, Progress, Badge
 } from 'antd'
 import {
-  UserOutlined, TeamOutlined, SearchOutlined, BookOutlined,
+  TeamOutlined, BookOutlined,
   TrophyOutlined, CalendarOutlined
 } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'

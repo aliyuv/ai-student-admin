@@ -1,9 +1,7 @@
 import { prisma } from "@/lib/prisma"
-import { auth } from "@/lib/auth"
 import ScoreManagementClient from "./score-management-client"
 
 export default async function ScoresPage() {
-  const session = await auth()
 
   // 获取当前教师负责的班级学生
   const students = await prisma.student.findMany({

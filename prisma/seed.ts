@@ -22,7 +22,7 @@ async function main() {
   const studentPassword = await bcrypt.hash("student123", 10)
 
   // 创建管理员
-  const admin = await prisma.user.create({
+  await prisma.user.create({
     data: {
       name: "系统管理员",
       email: "admin@school.com",

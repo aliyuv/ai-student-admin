@@ -7,7 +7,7 @@ import {
 } from 'antd'
 import {
   PlusOutlined, CheckCircleOutlined, CloseCircleOutlined,
-  ClockCircleOutlined, CalendarOutlined, TeamOutlined
+  ClockCircleOutlined, CalendarOutlined
 } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 

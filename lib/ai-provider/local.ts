@@ -21,7 +21,7 @@ export class LocalProvider implements AIProvider {
   readonly defaultModel = "local"
   readonly availableModels = ["local"]
 
-  async chat(options: ChatCompletionOptions): Promise<ChatCompletionResult> {
+  async chat(_options: ChatCompletionOptions): Promise<ChatCompletionResult> {
     // 本地模式不调用 API，返回一个标记内容
     // 业务层应检查 provider 类型，在 local 模式下使用自己的算法
     return {

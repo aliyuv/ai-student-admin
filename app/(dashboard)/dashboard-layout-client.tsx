@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from 'react'
-import { Layout, Menu, Avatar, Typography, theme, Tag, Tooltip } from 'antd'
+import { Layout, Menu, Avatar, Typography, Tag, Tooltip } from 'antd'
 import {
   UserOutlined,
   TeamOutlined,
@@ -14,7 +14,6 @@ import {
   ExperimentOutlined,
   ExclamationCircleOutlined,
   LogoutOutlined,
-  SettingOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   BankOutlined,
@@ -102,7 +101,6 @@ const getMenuItems = (role: string) => {
 
 export default function DashboardLayoutClient({ children, user }: DashboardLayoutProps) {
   const pathname = usePathname()
-  const { token } = theme.useToken()
   const [collapsed, setCollapsed] = useState(false)
 
   const menuItems = getMenuItems(user.role)

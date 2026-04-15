@@ -27,7 +27,6 @@ import {
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
-  SearchOutlined,
   UploadOutlined,
   DownloadOutlined,
   FileExcelOutlined,

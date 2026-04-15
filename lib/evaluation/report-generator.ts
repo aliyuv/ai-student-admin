@@ -111,7 +111,7 @@ class SmartCommentGenerator {
 
   generateDetailedAnalysis(input: ReportInput): string[] {
     const analysis: string[] = []
-    const { academic, activity, conduct, attendance, studentData } = input
+    const { studentData } = input
 
     // 学业分析
     if (studentData?.scores && studentData.scores.length > 0) {

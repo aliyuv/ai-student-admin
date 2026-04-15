@@ -21,7 +21,6 @@ import {
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
-  SearchOutlined,
   ReloadOutlined
 } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
