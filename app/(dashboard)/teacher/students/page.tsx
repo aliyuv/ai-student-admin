@@ -15,14 +15,36 @@ export default async function TeacherStudentsPage() {
     orderBy: { studentNo: "asc" },
   })
 
+  type StudentItem = (typeof students)[number]
+  type ScoreItem = StudentItem["scores"][number]
+  type AttendanceItem = StudentItem["attendances"][number]
+  type StudentSummary = {
+    id: string
+    studentNo: string
+    name: string
+    email: string
+    className: string
+    grade: string
+    teacherName: string
+    avgScore: number
+    activityCount: number
+    attendanceRate: number
+  }
+
   // 预处理统计数据
-  const studentsData = students.map(s => {
+  const studentsData: StudentSummary[] = students.map((s: StudentItem) => {
     const avgScore = s.scores.length > 0
-      ? Math.round((s.scores.reduce((sum, sc) => sum + sc.score, 0) / s.scores.length) * 10) / 10
+      ? Math.round(
+          (s.scores.reduce((sum: number, sc: ScoreItem) => sum + sc.score, 0) / s.scores.length) * 10
+        ) / 10
       : 0
     const attendanceRate = s.attendances.length > 0
       ? Math.round(
-          (s.attendances.filter(a => a.status === "PRESENT" || a.status === "LEAVE").length / s.attendances.length) * 100
+          (s.attendances.filter(
+            (a: AttendanceItem) => a.status === "PRESENT" || a.status === "LEAVE"
+          ).length /
+            s.attendances.length) *
+            100
         )
       : 100
 
@@ -40,7 +62,7 @@ export default async function TeacherStudentsPage() {
     }
   })
 
-  const classNames = Array.from(new Set(studentsData.map(s => s.className)))
+  const classNames: string[] = Array.from(new Set<string>(studentsData.map((s: StudentSummary) => s.className)))
 
   return (
     <StudentListClient
