@@ -56,6 +56,12 @@ interface ClassManagementClientProps {
   teachers: Teacher[]
 }
 
+interface ClassFormValues {
+  name: string
+  grade: string
+  teacherId: string
+}
+
 export default function ClassManagementClient({
   initialClasses,
   teachers
@@ -230,7 +236,7 @@ export default function ClassManagementClient({
   }
 
   // 保存班级
-  const handleSave = async (values: any) => {
+  const handleSave = async (values: ClassFormValues) => {
     try {
       setLoading(true)
 

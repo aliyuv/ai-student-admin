@@ -92,7 +92,7 @@ export default function AppealManagementClient({
   }
 
   // 提交申诉
-  const handleSubmitAppeal = async (_values: any) => {
+  const handleSubmitAppeal = async (_values: unknown) => {
     try {
       setLoading(true)
       // TODO: 实际提交申诉API

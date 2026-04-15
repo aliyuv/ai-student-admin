@@ -27,13 +27,13 @@ const { Title, Text } = Typography
 
 // 简化的统计 Dashboard 组件（不使用复杂图表库）
 interface StatsData {
-  students: any[]
-  scores: any[]
-  activities: any[]
-  awards: any[]
-  attendances: any[]
-  evaluations: any[]
-  classes: any[]
+  students: { id: string }[]
+  scores: { score: number; subject: string; student?: { class?: { id: string } } }[]
+  activities: { score: number; type: string }[]
+  awards: { id: string }[]
+  attendances: { id: string }[]
+  evaluations: { status: string; aiScore: number; student?: { class?: { id: string } } }[]
+  classes: { id: string; name: string; _count?: { students?: number } }[]
 }
 
 export default function StatsDashboardSimple(data: StatsData) {
@@ -211,7 +211,7 @@ export default function StatsDashboardSimple(data: StatsData) {
                 title: '平均分',
                 dataIndex: 'avgScore',
                 key: 'avgScore',
-                sorter: (a: any, b: any) => a.avgScore - b.avgScore,
+                sorter: (a: (typeof subjectAnalysis)[number], b: (typeof subjectAnalysis)[number]) => a.avgScore - b.avgScore,
                 render: (score: number) => (
                   <Text strong style={{
                     color: score >= 85 ? '#52c41a' :
@@ -237,7 +237,7 @@ export default function StatsDashboardSimple(data: StatsData) {
                 title: '及格率',
                 dataIndex: 'passRate',
                 key: 'passRate',
-                sorter: (a: any, b: any) => a.passRate - b.passRate,
+                sorter: (a: (typeof subjectAnalysis)[number], b: (typeof subjectAnalysis)[number]) => a.passRate - b.passRate,
                 render: (rate: number) => (
                   <Progress
                     percent={rate}
@@ -269,7 +269,7 @@ export default function StatsDashboardSimple(data: StatsData) {
                   <Col span={12}>
                     <Statistic
                       title="社团活动"
-                      value={data.activities.filter((a: any) => a.type === 'ACTIVITY').length}
+                      value={data.activities.filter((a: (typeof data.activities)[number]) => a.type === 'ACTIVITY').length}
                       suffix="项"
                       styles={{ content: { color: '#1890ff' } }}
                     />
@@ -277,7 +277,7 @@ export default function StatsDashboardSimple(data: StatsData) {
                   <Col span={12}>
                     <Statistic
                       title="实践项目"
-                      value={data.activities.filter((a: any) => a.type === 'PRACTICE').length}
+                      value={data.activities.filter((a: (typeof data.activities)[number]) => a.type === 'PRACTICE').length}
                       suffix="项"
                       styles={{ content: { color: '#52c41a' } }}
                     />
@@ -304,7 +304,7 @@ export default function StatsDashboardSimple(data: StatsData) {
                       title="平均活动分"
                       value={
                         data.activities.length > 0 ?
-                        Math.round((data.activities.reduce((sum: number, a: any) => sum + a.score, 0) / data.activities.length) * 10) / 10
+                        Math.round((data.activities.reduce((sum: number, a: (typeof data.activities)[number]) => sum + a.score, 0) / data.activities.length) * 10) / 10
                         : 0
                       }
                       precision={1}

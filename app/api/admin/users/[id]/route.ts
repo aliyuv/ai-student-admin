@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
 import bcrypt from "bcryptjs"
+import { Prisma } from "@prisma/client"
 
 // 更新用户
 export async function PUT(
@@ -42,7 +43,7 @@ export async function PUT(
     }
 
     // 准备更新数据
-    const updateData: any = {
+    const updateData: Prisma.UserUpdateInput = {
       name,
       email,
       role,

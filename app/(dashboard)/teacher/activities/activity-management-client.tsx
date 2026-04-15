@@ -46,6 +46,20 @@ interface ActivityManagementClientProps {
   activities: Activity[]
 }
 
+interface ActivityTemplate {
+  title: string
+  score: number
+  description: string
+}
+
+interface ActivityFormValues {
+  studentId: string
+  type: Activity["type"]
+  title: string
+  score: number
+  date: string
+}
+
 const activityTypes = [
   { value: 'ACTIVITY', label: '社团活动', color: 'blue', icon: <TeamOutlined /> },
   { value: 'PRACTICE', label: '实践项目', color: 'green', icon: <ExperimentOutlined /> },
@@ -77,7 +91,7 @@ export default function ActivityManagementClient({ students, activities }: Activ
   const [viewingActivity, setViewingActivity] = useState<Activity | null>(null)
   const [searchText, setSearchText] = useState('')
   const [typeFilter, setTypeFilter] = useState<string>()
-  const [selectedTemplate, setSelectedTemplate] = useState<any>(null)
+  const [selectedTemplate, setSelectedTemplate] = useState<ActivityTemplate | null>(null)
   const [form] = Form.useForm()
 
   const columns: ColumnsType<Activity> = [
@@ -185,7 +199,7 @@ export default function ActivityManagementClient({ students, activities }: Activ
     finally { setLoading(false) }
   }
 
-  const handleSave = async (_values: any) => {
+  const handleSave = async (_values: ActivityFormValues) => {
     try {
       setLoading(true)
       message.success(editingActivity ? '活动更新成功' : '活动录入成功')
@@ -194,7 +208,7 @@ export default function ActivityManagementClient({ students, activities }: Activ
     finally { setLoading(false) }
   }
 
-  const handleUseTemplate = (template: any) => {
+  const handleUseTemplate = (template: ActivityTemplate) => {
     setSelectedTemplate(template)
     form.setFieldsValue({ title: template.title, score: template.score })
   }

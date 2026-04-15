@@ -44,6 +44,21 @@ interface UserManagementClientProps {
   initialUsers: UserWithDetails[]
 }
 
+interface ClassOption {
+  id: string
+  name: string
+  grade: string
+}
+
+interface UserFormValues {
+  name: string
+  email: string
+  role: Role
+  studentNo?: string
+  classId?: string
+  password?: string
+}
+
 export default function UserManagementClient({ initialUsers }: UserManagementClientProps) {
   const [users, setUsers] = useState<UserWithDetails[]>(initialUsers)
   const [filteredUsers, setFilteredUsers] = useState<UserWithDetails[]>(initialUsers)
@@ -52,7 +67,7 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
   const [editingUser, setEditingUser] = useState<UserWithDetails | null>(null)
   const [searchText, setSearchText] = useState('')
   const [roleFilter, setRoleFilter] = useState<Role | undefined>()
-  const [classes, setClasses] = useState<any[]>([])
+  const [classes, setClasses] = useState<ClassOption[]>([])
   const [selectedRole, setSelectedRole] = useState<Role | undefined>()
   const [form] = Form.useForm()
 
@@ -243,7 +258,7 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
   }
 
   // 保存用户
-  const handleSave = async (values: any) => {
+  const handleSave = async (values: UserFormValues) => {
     try {
       setLoading(true)
 

@@ -67,7 +67,17 @@ const AWARD_COLORS = ["#1890ff", "#52c41a", "#faad14", "#722ed1", "#fa8c16"]
 
 // ── 自定义 Tooltip ───────────────────────────────────────────────────────────
 
-function CustomPieTooltip({ active, payload }: any) {
+interface PieTooltipPayloadItem {
+  name: string
+  value: number
+}
+
+interface CustomPieTooltipProps {
+  active?: boolean
+  payload?: PieTooltipPayloadItem[]
+}
+
+function CustomPieTooltip({ active, payload }: CustomPieTooltipProps) {
   if (!active || !payload?.[0]) return null
   const d = payload[0]
   return (
@@ -169,7 +179,9 @@ export default function StatsDashboardClient(props: Props) {
                     innerRadius={55} outerRadius={95}
                     paddingAngle={3}
                     dataKey="count"
-                    label={({ name, percent }: any) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
+                    label={({ name, percent }: { name?: string; percent?: number }) =>
+                      `${name ?? ""} ${((percent ?? 0) * 100).toFixed(0)}%`
+                    }
                     labelLine={{ strokeWidth: 1 }}
                   >
                     {evalDistribution.filter((d) => d.count > 0).map((entry, i) => (
@@ -368,7 +380,9 @@ export default function StatsDashboardClient(props: Props) {
                     innerRadius={30} outerRadius={55}
                     paddingAngle={3}
                     dataKey="value"
-                    label={({ name, percent }: any) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
+                    label={({ name, percent }: { name?: string; percent?: number }) =>
+                      `${name ?? ""} ${((percent ?? 0) * 100).toFixed(0)}%`
+                    }
                     labelLine={{ strokeWidth: 1 }}
                   >
                     {awardStats.levelDistribution.map((_, i) => (

@@ -410,7 +410,7 @@ function fitWeights(
   data: { dims: { academic: number; activity: number; conduct: number; attendance: number }; target: number }[]
 ) {
   // 初始权重
-  let w = { academic: 0.5, activity: 0.2, conduct: 0.2, attendance: 0.1 }
+  const w = { academic: 0.5, activity: 0.2, conduct: 0.2, attendance: 0.1 }
   const lr = 0.00001 // 学习率
   const epochs = 500
 

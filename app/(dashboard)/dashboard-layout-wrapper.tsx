@@ -2,6 +2,13 @@ import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import DashboardLayoutClient from "./dashboard-layout-client"
 
+interface DashboardUser {
+  id: string
+  name?: string | null
+  email?: string | null
+  role: string
+}
+
 export default async function DashboardLayoutWrapper({
   children
 }: {
@@ -14,7 +21,7 @@ export default async function DashboardLayoutWrapper({
   }
 
   return (
-    <DashboardLayoutClient user={session.user as any}>
+    <DashboardLayoutClient user={session.user as DashboardUser}>
       {children}
     </DashboardLayoutClient>
   )

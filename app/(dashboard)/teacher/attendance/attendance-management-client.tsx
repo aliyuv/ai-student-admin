@@ -34,6 +34,12 @@ interface Props {
   attendances: Attendance[]
 }
 
+interface AttendanceFormValues {
+  studentId: string
+  status: Attendance["status"]
+  date: string
+}
+
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   PRESENT: { label: '出勤', color: 'success', icon: <CheckCircleOutlined /> },
   ABSENT: { label: '缺勤', color: 'error', icon: <CloseCircleOutlined /> },
@@ -71,7 +77,7 @@ export default function AttendanceManagementClient({ students, attendances }: Pr
   const handleSearch = (v: string) => { setSearchText(v); applyFilters(v, statusFilter) }
   const handleStatusFilter = (v: string | undefined) => { setStatusFilter(v); applyFilters(searchText, v) }
 
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (values: AttendanceFormValues) => {
     try {
       setLoading(true)
       const res = await fetch('/api/teacher/attendance', {

@@ -50,7 +50,7 @@ export function calcActivityScore(
   const { timeDecay = false, typeBonus = true } = options || {}
   const baseScore = 60
   let totalScore = 0
-  let maxPossibleScore = 40 // 最大增长分数
+  const maxPossibleScore = 40 // 最大增长分数
 
   activities.forEach(activity => {
     let activityScore = activity.score

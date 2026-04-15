@@ -459,7 +459,7 @@ export default function EvaluationConfigClient({ initialConfig }: EvaluationConf
                   columns={[
                     {
                       title: '原始范围',
-                      render: (_: any, record: ScoreRange) =>
+                      render: (_: unknown, record: ScoreRange) =>
                         `${record.min} – ${record.max === 999 ? '∞' : record.max}`,
                       width: 90
                     },
