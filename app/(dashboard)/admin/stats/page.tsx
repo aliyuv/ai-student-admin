@@ -32,11 +32,16 @@ export default async function StatsPage() {
 
   // 1) 学期列表
   const semesters = Array.from(
-    new Set([...scores.map((s) => s.semester), ...evaluations.map((e) => e.semester)])
+    new Set([
+      ...scores.map((s: (typeof scores)[number]) => s.semester),
+      ...evaluations.map((e: (typeof evaluations)[number]) => e.semester),
+    ])
   ).sort()
 
   // 2) 核心指标
-  const approvedEvals = evaluations.filter((e) => e.status === "APPROVED")
+  const approvedEvals = evaluations.filter(
+    (e: (typeof evaluations)[number]) => e.status === "APPROVED"
+  )
   const overview = {
     totalStudents: students.length,
     totalClasses: classes.length,
