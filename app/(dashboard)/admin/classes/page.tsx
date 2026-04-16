@@ -5,7 +5,9 @@ import ClassManagementClient from "./class-management-client"
 const PAGE_SIZE = 10
 
 export default async function AdminClassesPage() {
+  const t0 = performance.now()
   await connection()
+  const t1 = performance.now()
 
   const [classes, total, teachers] = await Promise.all([
     prisma.class.findMany({
@@ -26,6 +28,9 @@ export default async function AdminClassesPage() {
       select: { id: true, name: true, email: true },
     }),
   ])
+  const t2 = performance.now()
+
+  console.log(`[perf] /admin/classes — connection: ${(t1-t0).toFixed(0)}ms, query: ${(t2-t1).toFixed(0)}ms, total: ${(t2-t0).toFixed(0)}ms, classes: ${classes.length}/${total}`)
 
   return (
     <ClassManagementClient

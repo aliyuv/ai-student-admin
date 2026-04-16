@@ -2,10 +2,14 @@ import { prisma } from "@/lib/prisma"
 import { connection } from "next/server"
 import ScoreManagementClient from "./score-management-client"
 
-export default async function ScoresPage() {
-  await connection()
+const SCORES_PAGE_SIZE = 50
 
-  const [students, scores, scoreSemesters] = await Promise.all([
+export default async function ScoresPage() {
+  const t0 = performance.now()
+  await connection()
+  const t1 = performance.now()
+
+  const [students, scores, totalScores, scoreSemesters] = await Promise.all([
     prisma.student.findMany({
       select: {
         id: true,
@@ -32,8 +36,9 @@ export default async function ScoresPage() {
         }
       },
       orderBy: { createdAt: "desc" },
-      take: 500,
+      take: SCORES_PAGE_SIZE,
     }),
+    prisma.score.count(),
     prisma.score.findMany({
       distinct: ["semester"],
       select: { semester: true },
@@ -49,6 +54,9 @@ export default async function ScoresPage() {
   ]
 
   const semesters = scoreSemesters.map(({ semester }) => semester)
+  const t2 = performance.now()
+
+  console.log(`[perf] /teacher/scores — connection: ${(t1-t0).toFixed(0)}ms, query: ${(t2-t1).toFixed(0)}ms, total: ${(t2-t0).toFixed(0)}ms, students: ${students.length}, scores: ${scores.length}/${totalScores}`)
 
   return (
     <ScoreManagementClient
