@@ -112,21 +112,45 @@ export async function DELETE(
       return NextResponse.json({ error: "不能删除管理员账户" }, { status: 400 })
     }
 
-    // 删除相关数据（如果是学生）
-    if (existingUser.role === "STUDENT") {
-      await prisma.student.deleteMany({
-        where: { userId: id }
-      })
-    }
+    // 使用事务删除用户及其所有关联数据
+    await prisma.$transaction(async (tx) => {
+      if (existingUser.role === "STUDENT") {
+        // 查找该用户对应的学生记录
+        const student = await tx.student.findUnique({ where: { userId: id } })
 
-    // 删除用户
-    await prisma.user.delete({
-      where: { id }
+        if (student) {
+          // 先删除 evaluation 下的 appeals
+          await tx.appeal.deleteMany({
+            where: { evaluation: { studentId: student.id } }
+          })
+          // 删除 evaluations
+          await tx.evaluation.deleteMany({ where: { studentId: student.id } })
+          // 删除 scores、activities、awards、attendances
+          await tx.score.deleteMany({ where: { studentId: student.id } })
+          await tx.activity.deleteMany({ where: { studentId: student.id } })
+          await tx.award.deleteMany({ where: { studentId: student.id } })
+          await tx.attendance.deleteMany({ where: { studentId: student.id } })
+          // 删除学生记录
+          await tx.student.delete({ where: { id: student.id } })
+        }
+      }
+
+      // 如果是教师，需要先解除班级关联（否则外键约束失败）
+      if (existingUser.role === "TEACHER") {
+        const classCount = await tx.class.count({ where: { teacherId: id } })
+        if (classCount > 0) {
+          throw new Error(`该教师还管理 ${classCount} 个班级，请先更换班主任后再删除`)
+        }
+      }
+
+      // 删除用户
+      await tx.user.delete({ where: { id } })
     })
 
     return NextResponse.json({ message: "用户删除成功" })
   } catch (error) {
     console.error("删除用户失败:", error)
-    return NextResponse.json({ error: "删除用户失败" }, { status: 500 })
+    const message = error instanceof Error ? error.message : "删除用户失败"
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

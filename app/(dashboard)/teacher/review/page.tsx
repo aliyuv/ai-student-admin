@@ -1,24 +1,42 @@
 import { prisma } from "@/lib/prisma"
+import { connection } from "next/server"
 import ReviewManagementClient from "./review-management-client"
 
 export default async function ReviewPage() {
-  const [students, evaluations] = await Promise.all([
+  await connection()
+
+  const [students, evaluations, scoreSemesters] = await Promise.all([
     prisma.student.findMany({
-      include: { user: true, class: true },
+      select: {
+        id: true, studentNo: true,
+        user: { select: { name: true } },
+        class: { select: { name: true, grade: true } },
+      },
       orderBy: { user: { name: "asc" } },
     }),
     prisma.evaluation.findMany({
-      include: { student: { include: { user: true, class: true } } },
+      select: {
+        id: true, semester: true, aiScore: true, aiReport: true,
+        status: true, createdAt: true, studentId: true,
+        student: {
+          select: {
+            studentNo: true,
+            user: { select: { name: true } },
+            class: { select: { name: true, grade: true } },
+          },
+        },
+      },
       orderBy: { createdAt: "desc" },
+      take: 500,
+    }),
+    prisma.score.findMany({
+      distinct: ["semester"],
+      select: { semester: true },
+      orderBy: { semester: "desc" },
     }),
   ])
 
-  // 获取可用学期
-  const currentYear = new Date().getFullYear()
-  const semesters = [
-    `${currentYear}-1`, `${currentYear}-2`,
-    `${currentYear - 1}-1`, `${currentYear - 1}-2`,
-  ]
+  const semesters = scoreSemesters.map(({ semester }) => semester)
 
   return (
     <ReviewManagementClient

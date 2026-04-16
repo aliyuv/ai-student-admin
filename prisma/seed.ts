@@ -15,6 +15,45 @@ async function main() {
   await prisma.student.deleteMany()
   await prisma.class.deleteMany()
   await prisma.user.deleteMany()
+  await prisma.major.deleteMany()
+  await prisma.department.deleteMany()
+
+  // 创建院系和专业
+  console.log("🏛️  创建院系和专业...")
+  const csDept = await prisma.department.create({
+    data: {
+      name: "计算机学院", code: "CS", description: "计算机科学与技术学院",
+      majors: {
+        create: [
+          { name: "计算机科学与技术", code: "CS001" },
+          { name: "软件工程", code: "SE001" },
+          { name: "网络工程", code: "NE001" },
+        ],
+      },
+    },
+  })
+  await prisma.department.create({
+    data: {
+      name: "电子信息学院", code: "EE", description: "电子信息工程学院",
+      majors: {
+        create: [
+          { name: "电子信息工程", code: "EE001" },
+          { name: "通信工程", code: "CE001" },
+        ],
+      },
+    },
+  })
+  await prisma.department.create({
+    data: {
+      name: "经济管理学院", code: "EM", description: "经济与管理学院",
+      majors: {
+        create: [
+          { name: "工商管理", code: "BA001" },
+          { name: "市场营销", code: "MK001" },
+        ],
+      },
+    },
+  })
 
   // 密码哈希
   const adminPassword = await bcrypt.hash("admin123", 10)

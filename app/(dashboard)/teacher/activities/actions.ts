@@ -1,9 +1,15 @@
 "use server"
 
 import { prisma } from "@/lib/prisma"
+import { auth } from "@/lib/auth"
 import { revalidatePath } from "next/cache"
 
 export async function addActivity(formData: FormData) {
+  const session = await auth()
+  if (!session || !["ADMIN", "TEACHER"].includes(session.user.role)) {
+    throw new Error("无权限操作")
+  }
+
   await prisma.activity.create({
     data: {
       studentId: formData.get("studentId") as string,

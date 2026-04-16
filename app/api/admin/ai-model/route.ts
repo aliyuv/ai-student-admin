@@ -125,25 +125,21 @@ async function handleTrain() {
   try {
     const startTime = Date.now()
 
-    // 获取所有学生及其完整数据
-    const students = await prisma.student.findMany({
-      include: {
-        user: true,
-        scores: true,
-        activities: true,
-        awards: true,
-        attendances: true,
-      },
-    })
+    // 限制训练样本量，防止数据量过大导致 OOM
+    const TRAIN_LIMIT = 2000
 
-    if (students.length === 0) {
+    const studentCount = await prisma.student.count()
+    if (studentCount === 0) {
       return NextResponse.json({
         success: false,
         error: "没有学生数据，无法训练模型",
       })
     }
 
-    // 计算每个学生的各维度得分
+    // 分批加载学生数据，只 select 需要的字段
+    const BATCH_SIZE = 200
+    const totalToLoad = Math.min(studentCount, TRAIN_LIMIT)
+    const studentIds: string[] = []
     const dataPoints: {
       academic: number
       activity: number
@@ -151,33 +147,50 @@ async function handleTrain() {
       attendance: number
     }[] = []
 
-    for (const student of students) {
-      const academic = calcAcademicScore(
-        student.scores.map((s) => ({ score: s.score, subject: s.subject }))
-      )
-      const activity = calcActivityScore(
-        student.activities.map((a) => ({
-          score: a.score,
-          type: a.type,
-          date: a.date,
-        }))
-      )
-      const conduct = calcConductScore(
-        student.awards.map((a) => ({
-          type: a.type,
-          level: a.level,
-          date: a.date,
-        }))
-      )
-      const attendance = calcAttendanceScore(
-        student.attendances.map((a) => ({
-          status: a.status,
-          date: a.date,
-        }))
-      )
+    for (let skip = 0; skip < totalToLoad; skip += BATCH_SIZE) {
+      const batch = await prisma.student.findMany({
+        skip,
+        take: Math.min(BATCH_SIZE, totalToLoad - skip),
+        select: {
+          id: true,
+          scores: { select: { score: true, subject: true } },
+          activities: { select: { score: true, type: true, date: true } },
+          awards: { select: { type: true, level: true, date: true } },
+          attendances: { select: { status: true, date: true } },
+        },
+      })
 
-      dataPoints.push({ academic, activity, conduct, attendance })
+      for (const student of batch) {
+        studentIds.push(student.id)
+        const academic = calcAcademicScore(
+          student.scores.map((s) => ({ score: s.score, subject: s.subject }))
+        )
+        const activity = calcActivityScore(
+          student.activities.map((a) => ({
+            score: a.score,
+            type: a.type,
+            date: a.date,
+          }))
+        )
+        const conduct = calcConductScore(
+          student.awards.map((a) => ({
+            type: a.type,
+            level: a.level,
+            date: a.date,
+          }))
+        )
+        const attendance = calcAttendanceScore(
+          student.attendances.map((a) => ({
+            status: a.status,
+            date: a.date,
+          }))
+        )
+
+        dataPoints.push({ academic, activity, conduct, attendance })
+      }
     }
+
+    const students = studentIds
 
     // 获取已审核的评测数据作为标签
     const evaluations = await prisma.evaluation.findMany({
@@ -206,14 +219,12 @@ async function handleTrain() {
     if (evaluations.length >= 5) {
       // 有足够标签数据：用梯度下降拟合权重
       const labeled = students
-        .filter((s) => studentScoreMap.has(s.id))
-        .map((s) => {
-          const idx = students.indexOf(s)
-          return {
-            dims: dataPoints[idx],
-            target: studentScoreMap.get(s.id)!,
-          }
-        })
+        .map((id, idx) => ({ id, idx }))
+        .filter(({ id }) => studentScoreMap.has(id))
+        .map(({ id, idx }) => ({
+          dims: dataPoints[idx],
+          target: studentScoreMap.get(id)!,
+        }))
 
       const fitResult = fitWeights(labeled)
       trainedWeights = fitResult.weights
@@ -278,73 +289,93 @@ async function handleTrain() {
 
 async function handleExport() {
   try {
-    const students = await prisma.student.findMany({
-      include: {
-        user: true,
-        scores: true,
-        activities: true,
-        awards: true,
-        attendances: true,
-        class: true,
-      },
-    })
+    // 限制导出数量，防止极端数据量导致 OOM
+    const EXPORT_LIMIT = 5000
+    const BATCH_SIZE = 200
 
-    if (students.length === 0) {
+    const studentCount = await prisma.student.count()
+    if (studentCount === 0) {
       return NextResponse.json({
         success: false,
         error: "没有学生数据，无法导出",
       })
     }
 
-    // 为每个学生计算各维度得分
-    const studentResults = students.map((student) => {
-      const academic = calcAcademicScore(
-        student.scores.map((s) => ({ score: s.score, subject: s.subject }))
-      )
-      const activity = calcActivityScore(
-        student.activities.map((a) => ({
-          score: a.score,
-          type: a.type,
-          date: a.date,
-        }))
-      )
-      const conduct = calcConductScore(
-        student.awards.map((a) => ({
-          type: a.type,
-          level: a.level,
-          date: a.date,
-        }))
-      )
-      const attendance = calcAttendanceScore(
-        student.attendances.map((a) => ({
-          status: a.status,
-          date: a.date,
-        }))
-      )
+    const totalToLoad = Math.min(studentCount, EXPORT_LIMIT)
 
-      const finalScore = calculateFinalScore(
-        { academic, activity, conduct, attendance },
-        { academic: 60, activity: 15, conduct: 10, attendance: 15 }
-      )
+    // 分批加载学生数据，只 select 需要的字段
+    const studentResults: {
+      studentNo: string
+      name: string
+      className: string
+      dimensions: { academic: number; activity: number; conduct: number; attendance: number }
+      finalScore: number
+    }[] = []
 
-      return {
-        studentNo: student.studentNo,
-        name: student.user.name,
-        className: student.class.name,
-        dimensions: {
-          academic: Math.round(academic * 10) / 10,
-          activity: Math.round(activity * 10) / 10,
-          conduct: Math.round(conduct * 10) / 10,
-          attendance: Math.round(attendance * 10) / 10,
+    for (let skip = 0; skip < totalToLoad; skip += BATCH_SIZE) {
+      const batch = await prisma.student.findMany({
+        skip,
+        take: Math.min(BATCH_SIZE, totalToLoad - skip),
+        select: {
+          studentNo: true,
+          user: { select: { name: true } },
+          class: { select: { name: true } },
+          scores: { select: { score: true, subject: true } },
+          activities: { select: { score: true, type: true, date: true } },
+          awards: { select: { type: true, level: true, date: true } },
+          attendances: { select: { status: true, date: true } },
         },
-        finalScore: Math.round(finalScore * 10) / 10,
+      })
+
+      for (const student of batch) {
+        const academic = calcAcademicScore(
+          student.scores.map((s) => ({ score: s.score, subject: s.subject }))
+        )
+        const activity = calcActivityScore(
+          student.activities.map((a) => ({
+            score: a.score,
+            type: a.type,
+            date: a.date,
+          }))
+        )
+        const conduct = calcConductScore(
+          student.awards.map((a) => ({
+            type: a.type,
+            level: a.level,
+            date: a.date,
+          }))
+        )
+        const attendance = calcAttendanceScore(
+          student.attendances.map((a) => ({
+            status: a.status,
+            date: a.date,
+          }))
+        )
+
+        const finalScore = calculateFinalScore(
+          { academic, activity, conduct, attendance },
+          { academic: 60, activity: 15, conduct: 10, attendance: 15 }
+        )
+
+        studentResults.push({
+          studentNo: student.studentNo,
+          name: student.user.name,
+          className: student.class.name,
+          dimensions: {
+            academic: Math.round(academic * 10) / 10,
+            activity: Math.round(activity * 10) / 10,
+            conduct: Math.round(conduct * 10) / 10,
+            attendance: Math.round(attendance * 10) / 10,
+          },
+          finalScore: Math.round(finalScore * 10) / 10,
+        })
       }
-    })
+    }
 
     // 统计信息
     const allScores = studentResults.map((r) => r.finalScore)
     const overview = {
-      totalStudents: students.length,
+      totalStudents: studentCount,
       scoreDistribution: {
         excellent: allScores.filter((s) => s >= 90).length,
         good: allScores.filter((s) => s >= 80 && s < 90).length,
@@ -355,11 +386,10 @@ async function handleExport() {
       stats: calcStats(allScores),
     }
 
-    // 已有评测数据
-    const evaluationCount = await prisma.evaluation.count()
-    const approvedCount = await prisma.evaluation.count({
-      where: { status: "APPROVED" },
-    })
+    const [evaluationCount, approvedCount] = await Promise.all([
+      prisma.evaluation.count(),
+      prisma.evaluation.count({ where: { status: "APPROVED" } }),
+    ])
 
     return NextResponse.json({
       success: true,

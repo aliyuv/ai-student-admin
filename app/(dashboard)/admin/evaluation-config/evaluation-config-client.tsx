@@ -82,7 +82,7 @@ interface EvaluationConfig {
     enabled: boolean
     modelType: string
     description: string
-    lastTrainedAt: string
+    lastTrainedAt: string | null
     accuracy: number
     sampleCount: number
     labeledCount: number
@@ -535,7 +535,9 @@ export default function EvaluationConfigClient({ initialConfig }: EvaluationConf
                   <Col span={12}>
                     <Form.Item label="最后训练时间">
                       <Input
-                        value={new Date(config.aiModel.lastTrainedAt).toLocaleDateString('zh-CN')}
+                        value={config.aiModel.lastTrainedAt
+                          ? new Date(config.aiModel.lastTrainedAt).toLocaleDateString('zh-CN')
+                          : '暂无训练记录'}
                         disabled
                         style={{ color: '#595959' }}
                       />
@@ -721,7 +723,9 @@ export default function EvaluationConfigClient({ initialConfig }: EvaluationConf
                   <Col span={12}>
                     <Text type="secondary" style={{ fontSize: 12 }}>
                       最后训练<br />
-                      {new Date(config.aiModel.lastTrainedAt).toLocaleDateString('zh-CN')}
+                      {config.aiModel.lastTrainedAt
+                        ? new Date(config.aiModel.lastTrainedAt).toLocaleDateString('zh-CN')
+                        : '暂无训练记录'}
                     </Text>
                   </Col>
                 </Row>

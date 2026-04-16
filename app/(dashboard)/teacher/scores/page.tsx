@@ -1,39 +1,46 @@
 import { prisma } from "@/lib/prisma"
+import { connection } from "next/server"
 import ScoreManagementClient from "./score-management-client"
 
 export default async function ScoresPage() {
+  await connection()
 
-  // 获取当前教师负责的班级学生
-  const students = await prisma.student.findMany({
-    include: {
-      user: true,
-      class: {
-        include: {
-          teacher: true
-        }
-      }
-    },
-    // TODO: 根据当前教师权限过滤学生
-    orderBy: { user: { name: "asc" } }
-  })
-
-  const scores = await prisma.score.findMany({
-    include: {
-      student: {
-        include: {
-          user: true,
-          class: {
-            include: {
-              teacher: true
-            }
+  const [students, scores, scoreSemesters] = await Promise.all([
+    prisma.student.findMany({
+      select: {
+        id: true,
+        studentNo: true,
+        user: { select: { id: true, name: true, email: true } },
+        class: { select: { id: true, name: true, grade: true, teacher: { select: { name: true } } } },
+      },
+      orderBy: { user: { name: "asc" } }
+    }),
+    prisma.score.findMany({
+      select: {
+        id: true,
+        subject: true,
+        score: true,
+        semester: true,
+        createdAt: true,
+        student: {
+          select: {
+            id: true,
+            studentNo: true,
+            user: { select: { id: true, name: true, email: true } },
+            class: { select: { id: true, name: true, grade: true, teacher: { select: { name: true } } } },
           }
         }
-      }
-    },
-    orderBy: { createdAt: "desc" },
-  })
+      },
+      orderBy: { createdAt: "desc" },
+      take: 500,
+    }),
+    prisma.score.findMany({
+      distinct: ["semester"],
+      select: { semester: true },
+      orderBy: { semester: "desc" },
+    }),
+  ])
 
-  // 科目列表（可以从配置或数据库获取）
   const subjects = [
     "高等数学", "线性代数", "概率统计", "数据结构",
     "算法设计", "计算机网络", "操作系统", "数据库原理",
@@ -41,16 +48,7 @@ export default async function ScoresPage() {
     "大学英语", "思想政治", "体育", "专业选修"
   ]
 
-  // 学期列表
-  const currentYear = new Date().getFullYear()
-  const semesters = [
-    `${currentYear}-1`,
-    `${currentYear}-2`,
-    `${currentYear-1}-1`,
-    `${currentYear-1}-2`,
-    `${currentYear+1}-1`,
-    `${currentYear+1}-2`
-  ]
+  const semesters = scoreSemesters.map(({ semester }) => semester)
 
   return (
     <ScoreManagementClient

@@ -80,26 +80,15 @@ export default function AttendanceManagementClient({ students, attendances }: Pr
   const handleSubmit = async (values: AttendanceFormValues) => {
     try {
       setLoading(true)
-      const res = await fetch('/api/teacher/attendance', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(values),
-      })
-      if (res.ok) {
-        message.success('考勤录入成功')
-        setIsModalVisible(false)
-      } else {
-        // fallback: 使用 server action
-        const formData = new FormData()
-        formData.set('studentId', values.studentId)
-        formData.set('status', values.status)
-        formData.set('date', values.date)
-        const { addAttendance } = await import('./actions')
-        await addAttendance(formData)
-        message.success('考勤录入成功')
-        setIsModalVisible(false)
-        window.location.reload()
-      }
+      const formData = new FormData()
+      formData.set('studentId', values.studentId)
+      formData.set('status', values.status)
+      formData.set('date', values.date)
+      const { addAttendance } = await import('./actions')
+      await addAttendance(formData)
+      message.success('考勤录入成功')
+      setIsModalVisible(false)
+      window.location.reload()
     } catch {
       message.error('录入失败')
     } finally {
@@ -243,7 +232,6 @@ export default function AttendanceManagementClient({ students, attendances }: Pr
         open={isModalVisible}
         onCancel={() => setIsModalVisible(false)}
         footer={null}
-        destroyOnHidden
         width={480}
       >
         <Form form={form} layout="vertical" onFinish={handleSubmit}>

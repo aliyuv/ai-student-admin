@@ -698,7 +698,6 @@ export default function ScoreManagementClient({
         open={isModalVisible}
         onCancel={() => setIsModalVisible(false)}
         footer={null}
-        destroyOnHidden
         afterOpenChange={(open) => {
           if (open) {
             if (editingScore) {

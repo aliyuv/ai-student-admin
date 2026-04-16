@@ -1,30 +1,27 @@
 import { prisma } from "@/lib/prisma"
+import { connection } from "next/server"
 import EvaluationConfigClient from "./evaluation-config-client"
 
 export default async function EvaluationConfigPage() {
-  // 查询真实的训练样本数（学生总数）
-  const studentCount = await prisma.student.count()
+  await connection()
 
-  // 查询已审核评测数（用于计算准确率参考）
-  const approvedEvalCount = await prisma.evaluation.count({
-    where: { status: "APPROVED" },
-  })
+  const [studentCount, approvedEvalCount] = await Promise.all([
+    prisma.student.count(),
+    prisma.evaluation.count({ where: { status: "APPROVED" } }),
+  ])
 
-  // 简单准确率估算：基于已审核评测占比和数据充分度
-  // 有标签数据越多，模型越可信
   const accuracy = approvedEvalCount >= 10
     ? Math.min(0.95, 0.7 + approvedEvalCount / (approvedEvalCount + 50))
     : approvedEvalCount >= 1
       ? 0.6 + approvedEvalCount * 0.03
       : 0
 
-  // 当前评测权重配置（后续可以从数据库获取）
   const currentConfig = {
     weights: {
-      academic: 60,      // 学业成绩权重
-      activity: 15,      // 社团活动权重
-      conduct: 10,       // 品行表现权重
-      attendance: 15     // 出勤情况权重
+      academic: 60,
+      activity: 15,
+      conduct: 10,
+      attendance: 15
     },
     gradingScale: {
       excellent: { min: 90, label: "优秀", color: "#52c41a" },
@@ -86,7 +83,7 @@ export default async function EvaluationConfigPage() {
       enabled: true,
       modelType: "logistic_regression",
       description: "基于历史数据的逻辑回归优化模型",
-      lastTrainedAt: new Date().toISOString(),
+      lastTrainedAt: null,
       accuracy: Math.round(accuracy * 100) / 100,
       sampleCount: studentCount,
       labeledCount: approvedEvalCount,

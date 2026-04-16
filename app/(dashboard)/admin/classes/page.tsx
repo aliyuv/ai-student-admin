@@ -1,20 +1,39 @@
 import { prisma } from "@/lib/prisma"
+import { connection } from "next/server"
 import ClassManagementClient from "./class-management-client"
 
+const PAGE_SIZE = 10
+
 export default async function AdminClassesPage() {
-  const [classes, teachers] = await Promise.all([
+  await connection()
+
+  const [classes, total, teachers] = await Promise.all([
     prisma.class.findMany({
-      include: {
-        teacher: true,
-        _count: { select: { students: true } }
+      select: {
+        id: true,
+        name: true,
+        grade: true,
+        teacherId: true,
+        teacher: { select: { id: true, name: true, email: true } },
+        _count: { select: { students: true } },
       },
-      orderBy: { name: "asc" },
+      orderBy: [{ grade: "desc" }, { name: "asc" }],
+      take: PAGE_SIZE,
     }),
+    prisma.class.count(),
     prisma.user.findMany({
       where: { role: "TEACHER" },
-      select: { id: true, name: true, email: true }
-    })
+      select: { id: true, name: true, email: true },
+    }),
   ])
 
-  return <ClassManagementClient initialClasses={classes} teachers={teachers} />
+  return (
+    <ClassManagementClient
+      initialClasses={classes}
+      initialTotal={total}
+      initialPage={1}
+      initialPageSize={PAGE_SIZE}
+      teachers={teachers}
+    />
+  )
 }

@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { auth } from "@/lib/auth"
 import { evaluateStudent } from "@/lib/ai-evaluation"
 
 export async function POST(req: NextRequest) {
+  const session = await auth()
+  if (!session || !["ADMIN", "TEACHER"].includes(session.user.role)) {
+    return NextResponse.json({ error: "无权限访问" }, { status: 403 })
+  }
+
   const { studentId, semester } = await req.json()
 
   const student = await prisma.student.findUnique({

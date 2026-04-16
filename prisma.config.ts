@@ -6,10 +6,11 @@ export default defineConfig({
   schema: "prisma/schema.prisma",
 
   migrations: {
-    path: "prisma/migrations",             // 如果你有 migrations 文件夹
+    path: "prisma/migrations",
+    seed: "npx tsx prisma/seed.ts",
   },
 
   datasource: {
-    url: "file:./dev.db",               // CLI 用本地文件，运行时通过 adapter 连 Turso
+    url: env("DATABASE_URL"),
   },
 });

@@ -83,6 +83,20 @@ export default function DepartmentManagementClient({
     }
   }
 
+  // 从服务端刷新数据
+  const refreshData = async () => {
+    try {
+      const res = await fetch('/api/admin/departments')
+      if (res.ok) {
+        const data = await res.json()
+        setDepartments(data)
+        filterDepartments(searchText, data)
+      }
+    } catch {
+      // 静默失败
+    }
+  }
+
   // 搜索
   const handleSearch = (value: string) => {
     setSearchText(value)
@@ -117,16 +131,16 @@ export default function DepartmentManagementClient({
   const handleDeleteDepartment = async (departmentId: string) => {
     try {
       setLoading(true)
-      // TODO: 接入真实 API
-      // const res = await fetch(`/api/admin/departments/${departmentId}`, { method: 'DELETE' })
-      const newDepartments = departments.filter(dept => dept.id !== departmentId)
-      setDepartments(newDepartments)
-      // 用最新数组直接过滤，避免 stale closure
-      filterDepartments(searchText, newDepartments)
-      // 若当前选中的院系被删除，清空选中
+      const res = await fetch(`/api/admin/departments/${departmentId}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (!res.ok) {
+        message.error(data.error || '删除失败')
+        return
+      }
       if (selectedDepartmentId === departmentId) setSelectedDepartmentId('')
       message.success('院系删除成功')
-    } catch (error) {
+      await refreshData()
+    } catch {
       message.error('删除失败')
     } finally {
       setLoading(false)
@@ -138,39 +152,34 @@ export default function DepartmentManagementClient({
       setLoading(true)
 
       if (editingDepartment) {
-        // 更新院系
-        // TODO: 接入真实 API
-        const updatedDept: Department = {
-          ...editingDepartment,
-          name: values.name,
-          code: values.code,
-          description: values.description ?? '',
+        const res = await fetch(`/api/admin/departments/${editingDepartment.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(values),
+        })
+        const data = await res.json()
+        if (!res.ok) {
+          message.error(data.error || '更新失败')
+          return
         }
-        const newDepartments = departments.map(d =>
-          d.id === editingDepartment.id ? updatedDept : d
-        )
-        setDepartments(newDepartments)
-        filterDepartments(searchText, newDepartments)
         message.success('院系更新成功')
       } else {
-        // 新建院系
-        // TODO: 接入真实 API，使用服务端返回的 id
-        const newDept: Department = {
-          id: `dept-${Date.now()}`,
-          name: values.name,
-          code: values.code,
-          description: values.description ?? '',
-          createdAt: new Date(),
-          majors: [],
+        const res = await fetch('/api/admin/departments', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(values),
+        })
+        const data = await res.json()
+        if (!res.ok) {
+          message.error(data.error || '创建失败')
+          return
         }
-        const newDepartments = [...departments, newDept]
-        setDepartments(newDepartments)
-        filterDepartments(searchText, newDepartments)
         message.success('院系创建成功')
       }
 
       setIsDeptModalVisible(false)
-    } catch (error) {
+      await refreshData()
+    } catch {
       message.error('保存失败')
     } finally {
       setLoading(false)
@@ -200,15 +209,15 @@ export default function DepartmentManagementClient({
   const handleDeleteMajor = async (majorId: string, departmentId: string) => {
     try {
       setLoading(true)
-      // TODO: 接入真实 API
-      const newDepartments = departments.map(dept => {
-        if (dept.id !== departmentId) return dept
-        return { ...dept, majors: dept.majors.filter(m => m.id !== majorId) }
-      })
-      setDepartments(newDepartments)
-      filterDepartments(searchText, newDepartments)
+      const res = await fetch(`/api/admin/departments/${departmentId}/majors/${majorId}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (!res.ok) {
+        message.error(data.error || '删除失败')
+        return
+      }
       message.success('专业删除成功')
-    } catch (error) {
+      await refreshData()
+    } catch {
       message.error('删除失败')
     } finally {
       setLoading(false)
@@ -220,40 +229,34 @@ export default function DepartmentManagementClient({
       setLoading(true)
 
       if (editingMajor) {
-        // 更新专业
-        // TODO: 接入真实 API
-        const newDepartments = departments.map(dept => {
-          if (dept.id !== editingMajor.departmentId) return dept
-          return {
-            ...dept,
-            majors: dept.majors.map(m =>
-              m.id === editingMajor.id ? { ...m, ...values } : m
-            ),
-          }
+        const res = await fetch(`/api/admin/departments/${editingMajor.departmentId}/majors/${editingMajor.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(values),
         })
-        setDepartments(newDepartments)
-        filterDepartments(searchText, newDepartments)
+        const data = await res.json()
+        if (!res.ok) {
+          message.error(data.error || '更新失败')
+          return
+        }
         message.success('专业更新成功')
       } else {
-        // 新建专业
-        // TODO: 接入真实 API，使用服务端返回的 id
-        const newMajor: Major = {
-          id: `major-${Date.now()}`,
-          name: values.name,
-          code: values.code,
-          departmentId: selectedDepartmentId,
-        }
-        const newDepartments = departments.map(dept => {
-          if (dept.id !== selectedDepartmentId) return dept
-          return { ...dept, majors: [...dept.majors, newMajor] }
+        const res = await fetch(`/api/admin/departments/${selectedDepartmentId}/majors`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(values),
         })
-        setDepartments(newDepartments)
-        filterDepartments(searchText, newDepartments)
+        const data = await res.json()
+        if (!res.ok) {
+          message.error(data.error || '创建失败')
+          return
+        }
         message.success('专业创建成功')
       }
 
       setIsMajorModalVisible(false)
-    } catch (error) {
+      await refreshData()
+    } catch {
       message.error('保存失败')
     } finally {
       setLoading(false)
@@ -519,7 +522,6 @@ export default function DepartmentManagementClient({
         open={isDeptModalVisible}
         onCancel={() => setIsDeptModalVisible(false)}
         footer={null}
-        destroyOnHidden
         afterOpenChange={(open) => {
           if (open && editingDepartment) {
             deptForm.setFieldsValue({
@@ -571,7 +573,6 @@ export default function DepartmentManagementClient({
         open={isMajorModalVisible}
         onCancel={() => setIsMajorModalVisible(false)}
         footer={null}
-        destroyOnHidden
         afterOpenChange={(open) => {
           if (open && editingMajor) {
             majorForm.setFieldsValue({ name: editingMajor.name, code: editingMajor.code })

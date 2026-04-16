@@ -7,18 +7,6 @@
   min-height: 100vh;
 }
 
-/* 防止FOUC (Flash of Unstyled Content) */
-html {
-  visibility: hidden;
-  opacity: 0;
-}
-
-html.hydrated {
-  visibility: visible;
-  opacity: 1;
-  transition: opacity 0.3s ease-in-out;
-}
-
 /* ── EduStar 侧边栏样式 ─────────────────────────────────── */
 
 /* 侧边栏整体 */
@@ -120,6 +108,12 @@ html.hydrated {
 /* 折叠态分组标题隐藏 */
 .edustar-sider.ant-layout-sider-collapsed .ant-menu-item-group-title {
   display: none;
+}
+
+@keyframes dashboard-loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @custom-variant dark (&:is(.dark *));

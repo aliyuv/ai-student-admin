@@ -4,6 +4,9 @@ const nextConfig: NextConfig = {
   // 关闭 React 严格模式
   reactStrictMode: false,
 
+  // 启用 Cache Components（Next.js 16 推荐的缓存方案）
+  cacheComponents: true,
+
   // 部署时忽略 TypeScript 错误
   typescript: {
     ignoreBuildErrors: true,

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import {
   Card,
   Table,
@@ -53,6 +53,9 @@ interface ClassWithDetails {
 
 interface ClassManagementClientProps {
   initialClasses: ClassWithDetails[]
+  initialTotal: number
+  initialPage: number
+  initialPageSize: number
   teachers: Teacher[]
 }
 
@@ -64,10 +67,15 @@ interface ClassFormValues {
 
 export default function ClassManagementClient({
   initialClasses,
+  initialTotal,
+  initialPage,
+  initialPageSize,
   teachers
 }: ClassManagementClientProps) {
   const [classes, setClasses] = useState<ClassWithDetails[]>(initialClasses)
-  const [filteredClasses, setFilteredClasses] = useState<ClassWithDetails[]>(initialClasses)
+  const [total, setTotal] = useState(initialTotal)
+  const [page, setPage] = useState(initialPage)
+  const [pageSize, setPageSize] = useState(initialPageSize)
   const [loading, setLoading] = useState(false)
   const [isModalVisible, setIsModalVisible] = useState(false)
   const [editingClass, setEditingClass] = useState<ClassWithDetails | null>(null)
@@ -75,8 +83,31 @@ export default function ClassManagementClient({
   const [gradeFilter, setGradeFilter] = useState<string>()
   const [form] = Form.useForm()
 
-  // 获取年级列表
-  const grades = Array.from(new Set(classes.map(c => c.grade))).sort()
+  // 服务端分页加载
+  const loadClasses = useCallback(async (p: number, ps: number, search: string, grade?: string) => {
+    try {
+      setLoading(true)
+      const params = new URLSearchParams({
+        page: String(p),
+        pageSize: String(ps),
+      })
+      if (search) params.set('search', search)
+      if (grade) params.set('grade', grade)
+
+      const response = await fetch(`/api/admin/classes?${params}`)
+      if (response.ok) {
+        const data = await response.json()
+        setClasses(data.classes)
+        setTotal(data.total)
+        setPage(data.page)
+        setPageSize(data.pageSize)
+      }
+    } catch (error) {
+      message.error('加载班级列表失败')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
   // 表格列配置
   const columns: ColumnsType<ClassWithDetails> = [
@@ -98,8 +129,6 @@ export default function ClassManagementClient({
       dataIndex: 'grade',
       key: 'grade',
       width: 100,
-      filters: grades.map(grade => ({ text: grade, value: grade })),
-      onFilter: (value, record) => record.grade === value,
       render: (grade) => <Tag color="blue">{grade}</Tag>
     },
     {
@@ -163,39 +192,28 @@ export default function ClassManagementClient({
     },
   ]
 
-  // 搜索过滤
-  const filterClasses = (search: string, grade?: string, source?: ClassWithDetails[]) => {
-    let filtered = source ?? classes
-
-    if (search) {
-      filtered = filtered.filter(cls =>
-        cls.name.toLowerCase().includes(search.toLowerCase()) ||
-        cls.teacher.name.toLowerCase().includes(search.toLowerCase()) ||
-        cls.grade.toLowerCase().includes(search.toLowerCase())
-      )
-    }
-
-    if (grade) {
-      filtered = filtered.filter(cls => cls.grade === grade)
-    }
-
-    setFilteredClasses(filtered)
-  }
-
+  // 搜索
   const handleSearch = (value: string) => {
     setSearchText(value)
-    filterClasses(value, gradeFilter)
+    loadClasses(1, pageSize, value, gradeFilter)
   }
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
     setSearchText(value)
-    filterClasses(value, gradeFilter)
+    if (!value) {
+      loadClasses(1, pageSize, '', gradeFilter)
+    }
   }
 
   const handleGradeFilter = (grade: string | undefined) => {
     setGradeFilter(grade)
-    filterClasses(searchText, grade)
+    loadClasses(1, pageSize, searchText, grade)
+  }
+
+  // 分页变化
+  const handleTableChange = (newPage: number, newPageSize: number) => {
+    loadClasses(newPage, newPageSize, searchText, gradeFilter)
   }
 
   // 新增班级
@@ -219,12 +237,7 @@ export default function ClassManagementClient({
 
       if (response.ok) {
         message.success('班级删除成功')
-        const newClasses = classes.filter(cls => cls.id !== classId)
-        setClasses(newClasses)
-        setFilteredClasses(newClasses.filter(cls =>
-          (!searchText || cls.name.includes(searchText) || cls.teacher.name.includes(searchText)) &&
-          (!gradeFilter || cls.grade === gradeFilter)
-        ))
+        loadClasses(page, pageSize, searchText, gradeFilter)
       } else {
         message.error(data.error || '删除失败')
       }
@@ -250,9 +263,7 @@ export default function ClassManagementClient({
 
         if (response.ok) {
           message.success('班级更新成功')
-          const newClasses = classes.map(cls => cls.id === editingClass.id ? data : cls)
-          setClasses(newClasses)
-          setFilteredClasses(newClasses)
+          loadClasses(page, pageSize, searchText, gradeFilter)
         } else {
           message.error(data.error || '更新失败')
           return
@@ -267,9 +278,7 @@ export default function ClassManagementClient({
 
         if (response.ok) {
           message.success('班级创建成功')
-          const newClasses = [...classes, data]
-          setClasses(newClasses)
-          setFilteredClasses(newClasses)
+          loadClasses(1, pageSize, searchText, gradeFilter)
         } else {
           message.error(data.error || '创建失败')
           return
@@ -286,51 +295,33 @@ export default function ClassManagementClient({
 
   // 刷新数据
   const handleRefresh = async () => {
-    try {
-      setLoading(true)
-      const response = await fetch('/api/admin/classes')
-      if (response.ok) {
-        const freshClasses = await response.json()
-        setClasses(freshClasses)
-        setSearchText('')
-        setGradeFilter(undefined)
-        // 用最新数据直接重置，不依赖已清空的 state
-        filterClasses('', undefined, freshClasses)
-        message.success('数据已刷新')
-      } else {
-        message.error('刷新失败')
-      }
-    } catch (error) {
-      message.error('刷新失败')
-    } finally {
-      setLoading(false)
-    }
+    setSearchText('')
+    setGradeFilter(undefined)
+    loadClasses(1, pageSize, '', undefined)
   }
 
-  // 统计数据
+  // 统计数据（当前页）
   const totalStudents = classes.reduce((sum, cls) => sum + cls._count.students, 0)
-  const totalClasses = classes.length
-  const totalGrades = grades.length
 
   return (
     <div>
       {/* 统计卡片 */}
       <Row gutter={16} style={{ marginBottom: 24 }}>
-        <Col span={6}>
+        <Col span={8}>
           <Card>
             <Statistic
               title="班级总数"
-              value={totalClasses}
+              value={total}
               suffix="个"
               prefix={<HomeOutlined style={{ color: '#1890ff' }} />}
               styles={{ content: { color: '#1890ff' } }}
             />
           </Card>
         </Col>
-        <Col span={6}>
+        <Col span={8}>
           <Card>
             <Statistic
-              title="学生总数"
+              title="当前页学生"
               value={totalStudents}
               suffix="人"
               prefix={<TeamOutlined style={{ color: '#52c41a' }} />}
@@ -338,25 +329,14 @@ export default function ClassManagementClient({
             />
           </Card>
         </Col>
-        <Col span={6}>
+        <Col span={8}>
           <Card>
             <Statistic
-              title="年级数量"
-              value={totalGrades}
-              suffix="个"
+              title="教师数量"
+              value={teachers.length}
+              suffix="位"
               prefix={<UserOutlined style={{ color: '#fa8c16' }} />}
               styles={{ content: { color: '#fa8c16' } }}
-            />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card>
-            <Statistic
-              title="平均班级规模"
-              value={totalClasses > 0 ? Math.round(totalStudents / totalClasses) : 0}
-              suffix="人/班"
-              prefix={<TeamOutlined style={{ color: '#722ed1' }} />}
-              styles={{ content: { color: '#722ed1' } }}
             />
           </Card>
         </Col>
@@ -393,7 +373,7 @@ export default function ClassManagementClient({
           <Row gutter={16}>
             <Col span={8}>
               <Search
-                placeholder="搜索班级名称、年级或班主任"
+                placeholder="搜索班级名称或班主任"
                 allowClear
                 value={searchText}
                 onChange={handleSearchChange}
@@ -409,7 +389,8 @@ export default function ClassManagementClient({
                 style={{ width: '100%' }}
                 onChange={handleGradeFilter}
               >
-                {grades.map(grade => (
+                {/* 年级列表从当前数据动态生成 */}
+                {Array.from(new Set(classes.map(c => c.grade))).sort().map(grade => (
                   <Option key={grade} value={grade}>{grade}</Option>
                 ))}
               </Select>
@@ -419,15 +400,17 @@ export default function ClassManagementClient({
 
         <Table
           columns={columns}
-          dataSource={filteredClasses}
+          dataSource={classes}
           rowKey="id"
           loading={loading}
           pagination={{
-            total: filteredClasses.length,
-            pageSize: 10,
+            current: page,
+            total,
+            pageSize,
             showSizeChanger: true,
             showQuickJumper: true,
             showTotal: (total) => `共 ${total} 个班级`,
+            onChange: handleTableChange,
           }}
           scroll={{ x: 800 }}
         />
@@ -439,7 +422,6 @@ export default function ClassManagementClient({
         onCancel={() => setIsModalVisible(false)}
         footer={null}
         width={600}
-        destroyOnHidden
         afterOpenChange={(open) => {
           if (open && editingClass) {
             form.setFieldsValue({

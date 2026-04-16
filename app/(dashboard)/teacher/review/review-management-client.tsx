@@ -303,7 +303,6 @@ export default function ReviewManagementClient({ students, evaluations, semester
         open={isGenerateModalVisible}
         onCancel={() => setIsGenerateModalVisible(false)}
         footer={null}
-        destroyOnHidden
         width={480}
       >
         <Alert

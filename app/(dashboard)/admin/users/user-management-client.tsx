@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   Card,
   Table,
@@ -42,6 +42,9 @@ interface UserWithDetails extends User {
 
 interface UserManagementClientProps {
   initialUsers: UserWithDetails[]
+  initialTotal: number
+  initialPage: number
+  initialPageSize: number
 }
 
 interface ClassOption {
@@ -59,9 +62,16 @@ interface UserFormValues {
   password?: string
 }
 
-export default function UserManagementClient({ initialUsers }: UserManagementClientProps) {
+export default function UserManagementClient({
+  initialUsers,
+  initialTotal,
+  initialPage,
+  initialPageSize,
+}: UserManagementClientProps) {
   const [users, setUsers] = useState<UserWithDetails[]>(initialUsers)
-  const [filteredUsers, setFilteredUsers] = useState<UserWithDetails[]>(initialUsers)
+  const [total, setTotal] = useState(initialTotal)
+  const [page, setPage] = useState(initialPage)
+  const [pageSize, setPageSize] = useState(initialPageSize)
   const [loading, setLoading] = useState(false)
   const [isModalVisible, setIsModalVisible] = useState(false)
   const [editingUser, setEditingUser] = useState<UserWithDetails | null>(null)
@@ -71,14 +81,14 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
   const [selectedRole, setSelectedRole] = useState<Role | undefined>()
   const [form] = Form.useForm()
 
-  // 获取班级列表
+  // 获取班级列表（轻量模式）
   useEffect(() => {
     fetchClasses()
   }, [])
 
   const fetchClasses = async () => {
     try {
-      const response = await fetch('/api/admin/classes')
+      const response = await fetch('/api/admin/classes?mode=options')
       if (response.ok) {
         const classData = await response.json()
         setClasses(classData)
@@ -87,6 +97,32 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
       console.error('获取班级列表失败:', error)
     }
   }
+
+  // 服务端分页加载
+  const loadUsers = useCallback(async (p: number, ps: number, search: string, role?: Role) => {
+    try {
+      setLoading(true)
+      const params = new URLSearchParams({
+        page: String(p),
+        pageSize: String(ps),
+      })
+      if (search) params.set('search', search)
+      if (role) params.set('role', role)
+
+      const response = await fetch(`/api/admin/users?${params}`)
+      if (response.ok) {
+        const data = await response.json()
+        setUsers(data.users)
+        setTotal(data.total)
+        setPage(data.page)
+        setPageSize(data.pageSize)
+      }
+    } catch (error) {
+      message.error('加载用户列表失败')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
   // 角色标签配置
   const getRoleTag = (role: Role) => {
@@ -104,7 +140,6 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
       title: '姓名',
       dataIndex: 'name',
       key: 'name',
-      sorter: (a, b) => a.name.localeCompare(b.name),
     },
     {
       title: '邮箱',
@@ -119,12 +154,6 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
         const config = getRoleTag(role)
         return <Tag color={config.color}>{config.text}</Tag>
       },
-      filters: [
-        { text: '管理员', value: 'ADMIN' },
-        { text: '教师', value: 'TEACHER' },
-        { text: '学生', value: 'STUDENT' },
-      ],
-      onFilter: (value, record) => record.role === value,
     },
     {
       title: '学号/班级',
@@ -148,7 +177,6 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
       dataIndex: 'createdAt',
       key: 'createdAt',
       render: (date: Date) => new Date(date).toLocaleDateString('zh-CN'),
-      sorter: (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
     },
     {
       title: '操作',
@@ -184,38 +212,28 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
     },
   ]
 
-  // 搜索过滤（source 参数用于绕过 stale closure，传入最新数据源）
-  const filterUsers = (search: string, role?: Role, source?: UserWithDetails[]) => {
-    let filtered = source ?? users
-
-    if (search) {
-      filtered = filtered.filter(user =>
-        user.name.toLowerCase().includes(search.toLowerCase()) ||
-        user.email.toLowerCase().includes(search.toLowerCase())
-      )
-    }
-
-    if (role) {
-      filtered = filtered.filter(user => user.role === role)
-    }
-
-    setFilteredUsers(filtered)
-  }
-
+  // 搜索
   const handleSearch = (value: string) => {
     setSearchText(value)
-    filterUsers(value, roleFilter)
+    loadUsers(1, pageSize, value, roleFilter)
   }
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
     setSearchText(value)
-    filterUsers(value, roleFilter)
+    if (!value) {
+      loadUsers(1, pageSize, '', roleFilter)
+    }
   }
 
   const handleRoleFilter = (role: Role | undefined) => {
     setRoleFilter(role)
-    filterUsers(searchText, role)
+    loadUsers(1, pageSize, searchText, role)
+  }
+
+  // 分页变化
+  const handleTableChange = (newPage: number, newPageSize: number) => {
+    loadUsers(newPage, newPageSize, searchText, roleFilter)
   }
 
   // 新增用户
@@ -243,9 +261,7 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
 
       if (response.ok) {
         message.success('用户删除成功')
-        const newUsers = users.filter(user => user.id !== userId)
-        setUsers(newUsers)
-        filterUsers(searchText, roleFilter, newUsers)
+        loadUsers(page, pageSize, searchText, roleFilter)
       } else {
         const data = await response.json()
         message.error(data.error || '删除失败')
@@ -263,45 +279,29 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
       setLoading(true)
 
       if (editingUser) {
-        // 更新用户
         const response = await fetch(`/api/admin/users/${editingUser.id}`, {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(values),
         })
 
         if (response.ok) {
-          const updatedUser = await response.json()
           message.success('用户更新成功')
-
-          const newUsers = users.map(user =>
-            user.id === editingUser.id ? updatedUser : user
-          )
-          setUsers(newUsers)
-          filterUsers(searchText, roleFilter, newUsers)
+          loadUsers(page, pageSize, searchText, roleFilter)
         } else {
           const data = await response.json()
           message.error(data.error || '更新失败')
         }
       } else {
-        // 创建新用户
         const response = await fetch('/api/admin/users', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(values),
         })
 
         if (response.ok) {
-          const newUser = await response.json()
           message.success('用户创建成功')
-
-          const newUsers = [newUser, ...users]
-          setUsers(newUsers)
-          filterUsers(searchText, roleFilter, newUsers)
+          loadUsers(1, pageSize, searchText, roleFilter)
         } else {
           const data = await response.json()
           message.error(data.error || '创建失败')
@@ -318,25 +318,9 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
 
   // 刷新数据
   const handleRefresh = async () => {
-    try {
-      setLoading(true)
-
-      const response = await fetch('/api/admin/users')
-      if (response.ok) {
-        const freshUsers = await response.json()
-        setUsers(freshUsers)
-        setSearchText('')
-        setRoleFilter(undefined)
-        filterUsers('', undefined, freshUsers)
-        message.success('数据已刷新')
-      } else {
-        message.error('刷新失败')
-      }
-    } catch (error) {
-      message.error('刷新失败')
-    } finally {
-      setLoading(false)
-    }
+    setSearchText('')
+    setRoleFilter(undefined)
+    loadUsers(1, pageSize, '', undefined)
   }
 
   return (
@@ -397,15 +381,17 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
 
       <Table
         columns={columns}
-        dataSource={filteredUsers}
+        dataSource={users}
         rowKey="id"
         loading={loading}
         pagination={{
-          total: filteredUsers.length,
-          pageSize: 10,
+          current: page,
+          total,
+          pageSize,
           showSizeChanger: true,
           showQuickJumper: true,
           showTotal: (total) => `共 ${total} 条记录`,
+          onChange: handleTableChange,
         }}
         scroll={{ x: 800 }}
       />
@@ -415,7 +401,6 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
         open={isModalVisible}
         onCancel={() => setIsModalVisible(false)}
         footer={null}
-        destroyOnHidden
         afterOpenChange={(open) => {
           if (open && editingUser) {
             form.setFieldsValue({

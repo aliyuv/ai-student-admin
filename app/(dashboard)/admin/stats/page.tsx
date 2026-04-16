@@ -1,229 +1,260 @@
 import { prisma } from "@/lib/prisma"
+import { connection } from "next/server"
 import StatsDashboardClient from "./stats-dashboard-client"
+import { cacheLife } from "next/cache"
 
-export default async function StatsPage() {
-  // ── 并行查询所有原始数据 ───────────────────────────────────────────────────
-  const [students, scores, activities, awards, attendances, evaluations, classes] =
-    await Promise.all([
-      prisma.student.findMany({
-        include: { user: true, class: true } as const,
-      }),
-      prisma.score.findMany({
-        include: { student: { include: { class: true } } } as const,
-      }),
-      prisma.activity.findMany({
-        include: { student: { include: { user: true, class: true } } } as const,
-      }),
-      prisma.award.findMany({
-        include: { student: { include: { user: true, class: true } } } as const,
-      }),
-      prisma.attendance.findMany({
-        include: { student: { include: { class: true } } } as const,
-      }),
-      prisma.evaluation.findMany({
-        include: { student: { include: { user: true, class: true } } } as const,
-      }),
-      prisma.class.findMany({
-        include: { teacher: true, _count: { select: { students: true } } } as const,
-      }),
-    ] as const)
+// 缓存 3 分钟，统计数据不需要实时
+async function getStatsData() {
+  "use cache"
+  cacheLife({ revalidate: 180 })
+  // ── 第 1 批：基础计数 + 成绩/评测聚合（6 个查询） ────────────────────────────
+  const [
+    totalStudents,
+    totalClasses,
+    scoreAgg,
+    evalAgg,
+    scoreDistRaw,
+    evalDistRaw,
+  ] = await Promise.all([
+    prisma.student.count(),
+    prisma.class.count(),
 
-  type ScoreItem = (typeof scores)[number]
-  type EvaluationItem = (typeof evaluations)[number]
-  type ClassItem = (typeof classes)[number]
-  type AttendanceItem = (typeof attendances)[number]
-  type ActivityItem = (typeof activities)[number]
-  type AwardItem = (typeof awards)[number]
+    prisma.$queryRaw<[{ cnt: bigint; avg_score: number; pass_cnt: bigint }]>`
+      SELECT COUNT(*) as cnt,
+             COALESCE(AVG(score), 0) as avg_score,
+             COUNT(*) FILTER (WHERE score >= 60) as pass_cnt
+      FROM "Score"`,
 
-  // ── 服务端预处理：只传前端需要的摘要数据 ──────────────────────────────────
+    prisma.$queryRaw<[{ cnt: bigint; avg_score: number }]>`
+      SELECT COUNT(*) as cnt, COALESCE(AVG("aiScore"), 0) as avg_score
+      FROM "Evaluation" WHERE status = 'APPROVED'`,
 
-  // 1) 学期列表
-  const semesters = Array.from(
-    new Set([
-      ...scores.map((s: (typeof scores)[number]) => s.semester),
-      ...evaluations.map((e: (typeof evaluations)[number]) => e.semester),
-    ])
-  ).sort()
+    prisma.$queryRaw<{ range_label: string; cnt: bigint }[]>`
+      SELECT CASE
+        WHEN score >= 90 THEN '优秀'
+        WHEN score >= 80 THEN '良好'
+        WHEN score >= 70 THEN '中等'
+        WHEN score >= 60 THEN '合格'
+        ELSE '不及格'
+      END as range_label, COUNT(*) as cnt
+      FROM "Score" GROUP BY range_label`,
 
-  // 2) 核心指标
-  const approvedEvals = evaluations.filter(
-    (e: (typeof evaluations)[number]) => e.status === "APPROVED"
-  )
+    prisma.$queryRaw<{ range_label: string; cnt: bigint }[]>`
+      SELECT CASE
+        WHEN "aiScore" >= 90 THEN '优秀'
+        WHEN "aiScore" >= 80 THEN '良好'
+        WHEN "aiScore" >= 70 THEN '中等'
+        WHEN "aiScore" >= 60 THEN '合格'
+        ELSE '待提升'
+      END as range_label, COUNT(*) as cnt
+      FROM "Evaluation" WHERE status = 'APPROVED' GROUP BY range_label`,
+  ])
+
+  // ── 第 2 批：学科/班级/考勤/活动/奖惩（6 个查询） ────────────────────────────
+  const [
+    subjectAggRaw,
+    classesWithTeacher,
+    attAgg,
+    activityAgg,
+    awardAgg,
+    semesterAggRaw,
+  ] = await Promise.all([
+    prisma.$queryRaw<{ subject: string; avg_score: number; max_score: number; min_score: number; pass_cnt: bigint; cnt: bigint }[]>`
+      SELECT subject,
+             AVG(score) as avg_score, MAX(score) as max_score, MIN(score) as min_score,
+             COUNT(*) FILTER (WHERE score >= 60) as pass_cnt, COUNT(*) as cnt
+      FROM "Score" GROUP BY subject ORDER BY avg_score DESC`,
+
+    prisma.class.findMany({
+      include: { teacher: { select: { name: true } }, _count: { select: { students: true } } },
+    }),
+
+    prisma.$queryRaw<{ status: string; cnt: bigint }[]>`
+      SELECT status, COUNT(*) as cnt FROM "Attendance" GROUP BY status`,
+
+    prisma.$queryRaw<[{ club_cnt: bigint; practice_cnt: bigint; avg_score: number }]>`
+      SELECT COUNT(*) FILTER (WHERE type = 'ACTIVITY') as club_cnt,
+             COUNT(*) FILTER (WHERE type = 'PRACTICE') as practice_cnt,
+             COALESCE(AVG(score), 0) as avg_score
+      FROM "Activity"`,
+
+    prisma.$queryRaw<[{ award_cnt: bigint; punish_cnt: bigint }]>`
+      SELECT COUNT(*) FILTER (WHERE type = 'AWARD') as award_cnt,
+             COUNT(*) FILTER (WHERE type = 'PUNISHMENT') as punish_cnt
+      FROM "Award"`,
+
+    prisma.$queryRaw<{ semester: string; avg_score: number; student_cnt: bigint }[]>`
+      SELECT semester, AVG(score) as avg_score, COUNT(DISTINCT "studentId") as student_cnt
+      FROM "Score" GROUP BY semester ORDER BY semester`,
+  ])
+
+  // ── 第 3 批：排行榜 + 班级维度聚合（4 个查询） ───────────────────────────────
+  const [
+    topStudentsRaw,
+    awardLevelRaw,
+    classScoreAgg,
+    classEvalAgg,
+  ] = await Promise.all([
+    prisma.$queryRaw<{ student_id: string; name: string; class_name: string; cnt: bigint; total_score: number }[]>`
+      SELECT a."studentId" as student_id, u.name, c.name as class_name,
+             COUNT(*) as cnt, SUM(a.score) as total_score
+      FROM "Activity" a
+      JOIN "Student" s ON s.id = a."studentId"
+      JOIN "User" u ON u.id = s."userId"
+      JOIN "Class" c ON c.id = s."classId"
+      GROUP BY a."studentId", u.name, c.name
+      ORDER BY cnt DESC LIMIT 8`,
+
+    prisma.$queryRaw<{ level: string; cnt: bigint }[]>`
+      SELECT level, COUNT(*) as cnt FROM "Award" WHERE type = 'AWARD' GROUP BY level`,
+
+    prisma.$queryRaw<{ class_id: string; avg_score: number; pass_cnt: bigint; cnt: bigint }[]>`
+      SELECT s."classId" as class_id, AVG(sc.score) as avg_score,
+             COUNT(*) FILTER (WHERE sc.score >= 60) as pass_cnt, COUNT(*) as cnt
+      FROM "Score" sc JOIN "Student" s ON s.id = sc."studentId"
+      GROUP BY s."classId"`,
+
+    prisma.$queryRaw<{ class_id: string; avg_score: number }[]>`
+      SELECT s."classId" as class_id, AVG(e."aiScore") as avg_score
+      FROM "Evaluation" e JOIN "Student" s ON s.id = e."studentId"
+      WHERE e.status = 'APPROVED'
+      GROUP BY s."classId"`,
+  ])
+
+  // ── 组装前端数据 ──────────────────────────────────────────────────────────────
+
+  const sa = scoreAgg[0]
+  const ea = evalAgg[0]
+  const totalScoreRecords = Number(sa.cnt)
+  const totalEvaluations = Number(ea.cnt)
+
   const overview = {
-    totalStudents: students.length,
-    totalClasses: classes.length,
-    totalScoreRecords: scores.length,
-    totalActivities: activities.length,
-    totalEvaluations: approvedEvals.length,
-    avgScore:
-      scores.length > 0
-        ? Math.round(
-            (scores.reduce(
-              (s: number, r: (typeof scores)[number]) => s + r.score,
-              0
-            ) / scores.length) * 10
-          ) / 10
-        : 0,
-    avgEvalScore:
-      approvedEvals.length > 0
-        ? Math.round(
-            (approvedEvals.reduce((s: number, e: EvaluationItem) => s + e.aiScore, 0) /
-              approvedEvals.length) *
-              10
-          ) / 10
-        : 0,
-    passRate:
-      scores.length > 0
-        ? Math.round((scores.filter((s: ScoreItem) => s.score >= 60).length / scores.length) * 100)
-        : 0,
+    totalStudents,
+    totalClasses,
+    totalScoreRecords,
+    totalActivities: Number(activityAgg[0].club_cnt) + Number(activityAgg[0].practice_cnt),
+    totalEvaluations,
+    avgScore: totalScoreRecords > 0 ? Math.round(sa.avg_score * 10) / 10 : 0,
+    avgEvalScore: totalEvaluations > 0 ? Math.round(ea.avg_score * 10) / 10 : 0,
+    passRate: totalScoreRecords > 0 ? Math.round((Number(sa.pass_cnt) / totalScoreRecords) * 100) : 0,
   }
 
-  // 3) 成绩分段分布
-  const scoreDistribution = [
-    { range: "90-100", label: "优秀", count: scores.filter((s: ScoreItem) => s.score >= 90).length, color: "#52c41a" },
-    { range: "80-89", label: "良好", count: scores.filter((s: ScoreItem) => s.score >= 80 && s.score < 90).length, color: "#1890ff" },
-    { range: "70-79", label: "中等", count: scores.filter((s: ScoreItem) => s.score >= 70 && s.score < 80).length, color: "#faad14" },
-    { range: "60-69", label: "合格", count: scores.filter((s: ScoreItem) => s.score >= 60 && s.score < 70).length, color: "#fa8c16" },
-    { range: "0-59", label: "不及格", count: scores.filter((s: ScoreItem) => s.score < 60).length, color: "#f5222d" },
-  ]
+  const scoreColorMap: Record<string, { range: string; color: string; order: number }> = {
+    "优秀": { range: "90-100", color: "#52c41a", order: 0 },
+    "良好": { range: "80-89", color: "#1890ff", order: 1 },
+    "中等": { range: "70-79", color: "#faad14", order: 2 },
+    "合格": { range: "60-69", color: "#fa8c16", order: 3 },
+    "不及格": { range: "0-59", color: "#f5222d", order: 4 },
+  }
+  const scoreDistribution = Object.entries(scoreColorMap).map(([label, meta]) => {
+    const found = scoreDistRaw.find(r => r.range_label === label)
+    return { range: meta.range, label, count: found ? Number(found.cnt) : 0, color: meta.color }
+  }).sort((a, b) => scoreColorMap[a.label].order - scoreColorMap[b.label].order)
 
-  // 4) 评测等级分布
-  const evalDistribution = [
-    { label: "优秀", count: approvedEvals.filter((e: EvaluationItem) => e.aiScore >= 90).length, color: "#52c41a" },
-    { label: "良好", count: approvedEvals.filter((e: EvaluationItem) => e.aiScore >= 80 && e.aiScore < 90).length, color: "#1890ff" },
-    { label: "中等", count: approvedEvals.filter((e: EvaluationItem) => e.aiScore >= 70 && e.aiScore < 80).length, color: "#faad14" },
-    { label: "合格", count: approvedEvals.filter((e: EvaluationItem) => e.aiScore >= 60 && e.aiScore < 70).length, color: "#fa8c16" },
-    { label: "待提升", count: approvedEvals.filter((e: EvaluationItem) => e.aiScore < 60).length, color: "#f5222d" },
-  ]
+  const evalColorMap: Record<string, { color: string; order: number }> = {
+    "优秀": { color: "#52c41a", order: 0 },
+    "良好": { color: "#1890ff", order: 1 },
+    "中等": { color: "#faad14", order: 2 },
+    "合格": { color: "#fa8c16", order: 3 },
+    "待提升": { color: "#f5222d", order: 4 },
+  }
+  const evalDistribution = Object.entries(evalColorMap).map(([label, meta]) => {
+    const found = evalDistRaw.find(r => r.range_label === label)
+    return { label, count: found ? Number(found.cnt) : 0, color: meta.color }
+  }).sort((a, b) => evalColorMap[a.label].order - evalColorMap[b.label].order)
 
-  // 5) 各科成绩分析
-  const subjectMap: Record<string, number[]> = {}
-  scores.forEach((s: ScoreItem) => {
-    if (!subjectMap[s.subject]) subjectMap[s.subject] = []
-    subjectMap[s.subject].push(s.score)
-  })
-  const subjectAnalysis = Object.entries(subjectMap)
-    .map(([subject, arr]) => ({
-      subject,
-      avgScore: Math.round((arr.reduce((s: number, v: number) => s + v, 0) / arr.length) * 10) / 10,
-      maxScore: Math.max(...arr),
-      minScore: Math.min(...arr),
-      passRate: Math.round((arr.filter((v) => v >= 60).length / arr.length) * 100),
-      studentCount: arr.length,
-    }))
-    .sort((a: { avgScore: number }, b: { avgScore: number }) => b.avgScore - a.avgScore)
+  const subjectAnalysis = subjectAggRaw.map(s => ({
+    subject: s.subject,
+    avgScore: Math.round(s.avg_score * 10) / 10,
+    maxScore: s.max_score,
+    minScore: s.min_score,
+    passRate: Number(s.cnt) > 0 ? Math.round((Number(s.pass_cnt) / Number(s.cnt)) * 100) : 0,
+    studentCount: Number(s.cnt),
+  }))
 
-  // 6) 班级排名
-  const classRanking = classes
-    .map((cls: ClassItem) => {
-      const clsScores = scores.filter((s: ScoreItem) => s.student?.classId === cls.id)
-      const clsEvals = approvedEvals.filter((e: EvaluationItem) => e.student?.classId === cls.id)
+  const classScoreMap = Object.fromEntries(classScoreAgg.map(r => [r.class_id, r]))
+  const classEvalMap = Object.fromEntries(classEvalAgg.map(r => [r.class_id, r]))
+
+  const classRanking = classesWithTeacher
+    .map(cls => {
+      const cs = classScoreMap[cls.id]
+      const ce = classEvalMap[cls.id]
       return {
         className: `${cls.grade} ${cls.name}`,
         teacherName: cls.teacher.name,
         studentCount: cls._count.students,
-        avgScore:
-          clsScores.length > 0
-            ? Math.round(
-                (clsScores.reduce((s: number, r: ScoreItem) => s + r.score, 0) / clsScores.length) * 10
-              ) / 10
-            : 0,
-        avgEvalScore:
-          clsEvals.length > 0
-            ? Math.round(
-                (clsEvals.reduce((s: number, e: EvaluationItem) => s + e.aiScore, 0) / clsEvals.length) *
-                  10
-              ) / 10
-            : 0,
-        passRate:
-          clsScores.length > 0
-            ? Math.round((clsScores.filter((s: ScoreItem) => s.score >= 60).length / clsScores.length) * 100)
-            : 0,
+        avgScore: cs ? Math.round(cs.avg_score * 10) / 10 : 0,
+        avgEvalScore: ce ? Math.round(ce.avg_score * 10) / 10 : 0,
+        passRate: cs && Number(cs.cnt) > 0 ? Math.round((Number(cs.pass_cnt) / Number(cs.cnt)) * 100) : 0,
       }
     })
-    .sort((a: { avgScore: number }, b: { avgScore: number }) => b.avgScore - a.avgScore)
+    .sort((a, b) => b.avgScore - a.avgScore)
 
-  // 7) 考勤统计
-  const attCounts = { PRESENT: 0, ABSENT: 0, LATE: 0, LEAVE: 0 }
-  attendances.forEach((a: AttendanceItem) => {
-    attCounts[a.status as keyof typeof attCounts]++
-  })
-  const totalAtt = Object.values(attCounts).reduce((s: number, v: number) => s + v, 0)
+  const attCounts: Record<string, number> = {}
+  attAgg.forEach(r => { attCounts[r.status] = Number(r.cnt) })
+  const totalAtt = Object.values(attCounts).reduce((s, v) => s + v, 0)
   const attendanceStats = {
     data: [
-      { name: "正常出勤", value: attCounts.PRESENT, color: "#52c41a" },
-      { name: "缺勤", value: attCounts.ABSENT, color: "#f5222d" },
-      { name: "迟到", value: attCounts.LATE, color: "#faad14" },
-      { name: "请假", value: attCounts.LEAVE, color: "#1890ff" },
-    ].filter((d: { value: number }) => d.value > 0),
-    rate: totalAtt > 0 ? Math.round(((attCounts.PRESENT + attCounts.LEAVE) / totalAtt) * 100) : 100,
+      { name: "正常出勤", value: attCounts["PRESENT"] || 0, color: "#52c41a" },
+      { name: "缺勤", value: attCounts["ABSENT"] || 0, color: "#f5222d" },
+      { name: "迟到", value: attCounts["LATE"] || 0, color: "#faad14" },
+      { name: "请假", value: attCounts["LEAVE"] || 0, color: "#1890ff" },
+    ].filter(d => d.value > 0),
+    rate: totalAtt > 0 ? Math.round(((attCounts["PRESENT"] || 0) + (attCounts["LEAVE"] || 0)) / totalAtt * 100) : 100,
     total: totalAtt,
   }
 
-  // 8) 活动分析
+  const aa = activityAgg[0]
   const activityStats = {
-    clubCount: activities.filter((a: ActivityItem) => a.type === "ACTIVITY").length,
-    practiceCount: activities.filter((a: ActivityItem) => a.type === "PRACTICE").length,
-    avgScore:
-      activities.length > 0
-        ? Math.round((activities.reduce((s: number, a: ActivityItem) => s + a.score, 0) / activities.length) * 10) / 10
-        : 0,
-    topStudents: (() => {
-      const map: Record<string, { name: string; className: string; count: number; totalScore: number }> = {}
-      activities.forEach((a: ActivityItem) => {
-        const sid = a.studentId
-        if (!map[sid]) {
-          map[sid] = { name: a.student.user.name, className: a.student.class.name, count: 0, totalScore: 0 }
-        }
-        map[sid].count++
-        map[sid].totalScore += a.score
-      })
-      return Object.values(map)
-        .sort((a: { count: number }, b: { count: number }) => b.count - a.count)
-        .slice(0, 8)
-    })(),
+    clubCount: Number(aa.club_cnt),
+    practiceCount: Number(aa.practice_cnt),
+    avgScore: Math.round(aa.avg_score * 10) / 10,
+    topStudents: topStudentsRaw.map(r => ({
+      name: r.name,
+      className: r.class_name,
+      count: Number(r.cnt),
+      totalScore: r.total_score,
+    })),
   }
 
-  // 9) 奖惩统计
+  const aw = awardAgg[0]
   const awardStats = {
-    awards: awards.filter((a: AwardItem) => a.type === "AWARD").length,
-    punishments: awards.filter((a: AwardItem) => a.type === "PUNISHMENT").length,
-    levelDistribution: (() => {
-      const map: Record<string, number> = {}
-      awards
-        .filter((a: AwardItem) => a.type === "AWARD")
-        .forEach((a: AwardItem) => {
-          map[a.level] = (map[a.level] || 0) + 1
-        })
-      return Object.entries(map).map(([level, count]) => ({ name: level, value: count }))
-    })(),
+    awards: Number(aw.award_cnt),
+    punishments: Number(aw.punish_cnt),
+    levelDistribution: awardLevelRaw.map(r => ({ name: r.level, value: Number(r.cnt) })),
   }
 
-  // 10) 学期趋势（各学期平均分）
-  const semesterTrend = semesters.map((sem: string) => {
-    const semScores = scores.filter((s: ScoreItem) => s.semester === sem)
-    return {
-      semester: sem,
-      avgScore:
-        semScores.length > 0
-          ? Math.round((semScores.reduce((s: number, r: ScoreItem) => s + r.score, 0) / semScores.length) * 10) / 10
-          : 0,
-      studentCount: new Set(semScores.map((s: ScoreItem) => s.studentId)).size,
-    }
-  })
+  const semesters = semesterAggRaw.map(r => r.semester)
+  const semesterTrend = semesterAggRaw.map(r => ({
+    semester: r.semester,
+    avgScore: Math.round(r.avg_score * 10) / 10,
+    studentCount: Number(r.student_cnt),
+  }))
+
+  return {
+    overview, scoreDistribution, evalDistribution, subjectAnalysis,
+    classRanking, attendanceStats, activityStats, awardStats,
+    semesterTrend, semesters,
+  }
+}
+
+export default async function StatsPage() {
+  await connection()
+
+  const data = await getStatsData()
 
   return (
     <StatsDashboardClient
-      overview={overview}
-      scoreDistribution={scoreDistribution}
-      evalDistribution={evalDistribution}
-      subjectAnalysis={subjectAnalysis}
-      classRanking={classRanking}
-      attendanceStats={attendanceStats}
-      activityStats={activityStats}
-      awardStats={awardStats}
-      semesterTrend={semesterTrend}
-      semesters={semesters}
+      overview={data.overview}
+      scoreDistribution={data.scoreDistribution}
+      evalDistribution={data.evalDistribution}
+      subjectAnalysis={data.subjectAnalysis}
+      classRanking={data.classRanking}
+      attendanceStats={data.attendanceStats}
+      activityStats={data.activityStats}
+      awardStats={data.awardStats}
+      semesterTrend={data.semesterTrend}
+      semesters={data.semesters}
     />
   )
 }

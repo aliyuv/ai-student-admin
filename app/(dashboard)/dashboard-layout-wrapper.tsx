@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth"
+import { connection } from "next/server"
 import { redirect } from "next/navigation"
 import DashboardLayoutClient from "./dashboard-layout-client"
 
@@ -14,6 +15,8 @@ export default async function DashboardLayoutWrapper({
 }: {
   children: React.ReactNode
 }) {
+  await connection()
+
   const session = await auth()
 
   if (!session?.user) {

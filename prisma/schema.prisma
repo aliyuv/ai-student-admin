@@ -4,7 +4,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 enum Role {
@@ -138,4 +138,21 @@ model Appeal {
   status       AppealStatus @default(PENDING)
   reply        String?
   createdAt    DateTime     @default(now())
+}
+
+model Department {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  code        String   @unique
+  description String   @default("")
+  createdAt   DateTime @default(now())
+  majors      Major[]
+}
+
+model Major {
+  id           String     @id @default(cuid())
+  name         String
+  code         String     @unique
+  department   Department @relation(fields: [departmentId], references: [id])
+  departmentId String
 }

@@ -257,7 +257,6 @@ export default function AppealManagementClient({
         open={isModalVisible}
         onCancel={() => setIsModalVisible(false)}
         footer={null}
-        destroyOnHidden
         width={600}
       >
         <Alert

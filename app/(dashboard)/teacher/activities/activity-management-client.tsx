@@ -282,7 +282,6 @@ export default function ActivityManagementClient({ students, activities }: Activ
         open={isModalVisible}
         onCancel={() => setIsModalVisible(false)}
         footer={null}
-        destroyOnHidden
         afterOpenChange={(open) => {
           if (open) {
             if (editingActivity) {

@@ -1,9 +1,12 @@
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { connection } from "next/server"
 import { redirect } from "next/navigation"
 import StudentProfileClient from "./student-profile-client"
 
 export default async function StudentProfilePage() {
+  await connection()
+
   const session = await auth()
   const userId = session?.user?.id
   if (!userId) redirect("/login")

@@ -1,3 +1,7 @@
+import { Suspense } from "react"
+import AntdProvider from "../antd-provider"
+import AuthProvider from "../auth-provider"
+import DashboardLoading from "./loading"
 import DashboardLayoutWrapper from "./dashboard-layout-wrapper"
 
 export default function DashboardLayout({
@@ -5,5 +9,13 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  return <DashboardLayoutWrapper>{children}</DashboardLayoutWrapper>
+  return (
+    <AuthProvider>
+      <AntdProvider>
+        <Suspense fallback={<DashboardLoading />}>
+          <DashboardLayoutWrapper>{children}</DashboardLayoutWrapper>
+        </Suspense>
+      </AntdProvider>
+    </AuthProvider>
+  )
 }
