@@ -12,6 +12,7 @@ import {
   ExperimentOutlined
 } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
+import { addActivity, updateActivity, deleteActivity } from './actions'
 
 const formatDate = (date: Date) => {
   const y = date.getFullYear()
@@ -82,8 +83,9 @@ const activityTemplates = {
   ],
 }
 
-export default function ActivityManagementClient({ students, activities }: ActivityManagementClientProps) {
-  const [filteredActivities, setFilteredActivities] = useState<Activity[]>(activities)
+export default function ActivityManagementClient({ students, activities: initialActivities }: ActivityManagementClientProps) {
+  const [activitiesList, setActivitiesList] = useState<Activity[]>(initialActivities)
+  const [filteredActivities, setFilteredActivities] = useState<Activity[]>(initialActivities)
   const [loading, setLoading] = useState(false)
   const [isModalVisible, setIsModalVisible] = useState(false)
   const [isDetailVisible, setIsDetailVisible] = useState(false)
@@ -175,8 +177,8 @@ export default function ActivityManagementClient({ students, activities }: Activ
   const handleSearch = (value: string) => { setSearchText(value); applyFilters(value, typeFilter) }
   const handleTypeFilter = (type: string | undefined) => { setTypeFilter(type); applyFilters(searchText, type) }
 
-  const applyFilters = (search: string, type?: string) => {
-    let f = activities
+  const applyFilters = (search: string, type?: string, source?: Activity[]) => {
+    let f = source ?? activitiesList
     if (search) {
       const lower = search.toLowerCase()
       f = f.filter(a =>
@@ -193,19 +195,81 @@ export default function ActivityManagementClient({ students, activities }: Activ
   const handleEdit = (activity: Activity) => { setEditingActivity(activity); setIsModalVisible(true) }
   const handleViewDetail = (activity: Activity) => { setViewingActivity(activity); setIsDetailVisible(true) }
 
-  const handleDelete = async (_activityId: string) => {
-    try { setLoading(true); message.success('活动记录删除成功') }
-    catch { message.error('删除失败') }
-    finally { setLoading(false) }
-  }
-
-  const handleSave = async (_values: ActivityFormValues) => {
+  const handleDelete = async (activityId: string) => {
+    const hide = message.loading('正在删除...')
     try {
       setLoading(true)
-      message.success(editingActivity ? '活动更新成功' : '活动录入成功')
+      await deleteActivity(activityId)
+
+      // 乐观更新：立即从列表移除
+      const updated = activitiesList.filter(a => a.id !== activityId)
+      setActivitiesList(updated)
+      applyFilters(searchText, typeFilter, updated)
+
+      hide()
+      message.success('活动记录删除成功')
+    } catch {
+      hide()
+      message.error('删除失败')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSave = async (values: ActivityFormValues) => {
+    const hide = message.loading(editingActivity ? '正在更新...' : '正在录入...')
+    try {
+      setLoading(true)
+      const formData = new FormData()
+      formData.append('studentId', values.studentId)
+      formData.append('type', values.type)
+      formData.append('title', values.title)
+      formData.append('score', String(values.score))
+      formData.append('date', values.date)
+
+      if (editingActivity) {
+        await updateActivity(editingActivity.id, formData)
+
+        // 乐观更新：立即更新列表中对应项
+        const updated = activitiesList.map(a =>
+          a.id === editingActivity.id
+            ? { ...a, type: values.type, title: values.title, score: values.score, date: new Date(values.date) }
+            : a
+        )
+        setActivitiesList(updated)
+        applyFilters(searchText, typeFilter, updated)
+
+        hide()
+        message.success('活动更新成功')
+      } else {
+        await addActivity(formData)
+
+        // 乐观更新：立即添加到列表
+        const student = students.find(s => s.id === values.studentId)!
+        const newActivity: Activity = {
+          id: `temp-${Date.now()}`,
+          type: values.type,
+          title: values.title,
+          score: values.score,
+          date: new Date(values.date),
+          createdAt: new Date(),
+          student,
+        }
+        const updated = [newActivity, ...activitiesList]
+        setActivitiesList(updated)
+        applyFilters(searchText, typeFilter, updated)
+
+        hide()
+        message.success('活动录入成功')
+      }
       setIsModalVisible(false)
-    } catch { message.error('保存失败') }
-    finally { setLoading(false) }
+      form.resetFields()
+    } catch {
+      hide()
+      message.error('保存失败')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleUseTemplate = (template: ActivityTemplate) => {
@@ -245,7 +309,7 @@ export default function ActivityManagementClient({ students, activities }: Activ
         <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
           <Col><Title level={4} style={{ margin: 0 }}>活动实践管理</Title></Col>
           <Col>
-            <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>录入活动</Button>
+            <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd} loading={loading}>录入活动</Button>
           </Col>
         </Row>
 

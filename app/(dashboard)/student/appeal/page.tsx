@@ -35,10 +35,15 @@ export default async function AppealPage() {
     prisma.appeal.findMany({
       where: { evaluation: { studentId: student.id } },
       select: {
-        id: true, reason: true, status: true, reply: true,
-        createdAt: true,
+        id: true, evaluationId: true, type: true, reason: true,
+        description: true, expectation: true,
+        status: true, reply: true, createdAt: true,
         evaluation: {
-          select: { id: true, semester: true, aiScore: true, aiReport: true },
+          select: { id: true, semester: true, aiScore: true, aiReport: true, createdAt: true },
+        },
+        attachments: {
+          select: { id: true, fileName: true, filePath: true, fileSize: true, fileType: true },
+          orderBy: { createdAt: "asc" },
         },
       },
       orderBy: { createdAt: "desc" },

@@ -134,10 +134,26 @@ model Appeal {
   id           String       @id @default(cuid())
   evaluation   Evaluation   @relation(fields: [evaluationId], references: [id])
   evaluationId String
+  type         String       @default("SCORE") // SCORE / ACTIVITY / ATTENDANCE / OTHER
   reason       String
+  description  String?
+  expectation  String?
   status       AppealStatus @default(PENDING)
   reply        String?
   createdAt    DateTime     @default(now())
+
+  attachments  AppealAttachment[]
+}
+
+model AppealAttachment {
+  id        String   @id @default(cuid())
+  appeal    Appeal   @relation(fields: [appealId], references: [id], onDelete: Cascade)
+  appealId  String
+  fileName  String
+  filePath  String
+  fileSize  Int
+  fileType  String
+  createdAt DateTime @default(now())
 }
 
 model Department {

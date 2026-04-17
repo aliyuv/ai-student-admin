@@ -43,8 +43,8 @@ export default function TablePageSkeleton({
           </Col>
           <Col>
             <Space>
-              <Skeleton.Button active size="default" />
-              <Skeleton.Button active size="default" />
+              <Skeleton.Button active size="medium" />
+              <Skeleton.Button active size="medium" />
             </Space>
           </Col>
         </Row>
@@ -52,10 +52,10 @@ export default function TablePageSkeleton({
         {/* 搜索栏骨架 */}
         <Row gutter={16} style={{ marginBottom: 16 }}>
           <Col span={8}>
-            <Skeleton.Button active block size="default" style={{ width: '100%' }} />
+            <Skeleton.Button active block size="medium" style={{ width: '100%' }} />
           </Col>
           <Col span={4}>
-            <Skeleton.Button active block size="default" style={{ width: '100%' }} />
+            <Skeleton.Button active block size="medium" style={{ width: '100%' }} />
           </Col>
         </Row>
 

@@ -9,8 +9,8 @@ export default async function ActivitiesPage() {
     prisma.student.findMany({
       select: {
         id: true, studentNo: true,
-        user: { select: { name: true } },
-        class: { select: { name: true, grade: true } },
+        user: { select: { id: true, name: true, email: true } },
+        class: { select: { id: true, name: true, grade: true } },
       },
       orderBy: { user: { name: "asc" } },
     }),
@@ -20,9 +20,9 @@ export default async function ActivitiesPage() {
         date: true, score: true, studentId: true, createdAt: true,
         student: {
           select: {
-            studentNo: true,
-            user: { select: { name: true } },
-            class: { select: { name: true, grade: true } },
+            id: true, studentNo: true,
+            user: { select: { id: true, name: true, email: true } },
+            class: { select: { id: true, name: true, grade: true } },
           },
         },
       },
